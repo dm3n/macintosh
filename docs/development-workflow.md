@@ -19,6 +19,11 @@ Claude Code — Coder Agent
     │  implements on feature branch
     │  writes tests, follows existing patterns
     ▼
+Claude Code — QA Agent
+    │  launches real Chromium browser against dev server
+    │  tests all affected user flows end-to-end
+    │  writes regression tests for every bug found
+    ▼
 Pull Request (GitHub)
     │
     ▼
@@ -62,8 +67,25 @@ Responsibilities:
 - Open a PR when implementation is complete
 - Include a clear PR description: what changed, why, how to test
 
+### QA Agent (`qa-agent.md`)
+**When:** After implementation, before opening the PR.
+
+Responsibilities:
+- Start the dev server and launch a real Chromium browser via Playwright
+- Map every changed file to the user flows it affects
+- Test all standard Airbank flows: auth, workbook, data room, flags, export
+- Write a regression test for every bug found
+- Produce a QA report: flows tested, bugs found, tests written
+
+Standard flows tested every run:
+- Login / session persistence
+- Dashboard workbook list + create
+- QoE workbook: cells, flags (create → comment → resolve), export
+- Data room: upload, checklist, chat
+- Settings: doc upload, SSE re-analyze stream
+
 ### Reviewer Agent (`code-reviewer.md`)
-**When:** After every PR is opened, before merge.
+**When:** After QA passes, before merge.
 
 Responsibilities:
 - Read the full diff
@@ -71,6 +93,20 @@ Responsibilities:
 - Verify the implementation matches the original spec
 - Leave specific, actionable comments
 - Approve only when all issues are resolved
+
+### Security Agent (`security-agent.md`)
+**When:** Before customer onboarding, investor demos, or any ship touching auth/upload/API/RLS.
+
+Responsibilities:
+- OWASP Top 10 audit across the full API surface
+- STRIDE threat model on the three highest-risk surfaces: document upload pipeline, share tokens, AI chat
+- `npm audit` for dependency CVEs
+- Scan for secrets in client-side code, raw SQL, dangerouslySetInnerHTML
+- Produce a severity-ranked findings report with concrete fixes
+
+Run schedule:
+- **Always:** before first paying customer, before investor demos with live data
+- **Scoped:** after any new API endpoint, RLS policy change, or file upload change
 
 ---
 

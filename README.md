@@ -498,7 +498,7 @@ Login: `user@test.com` / `TestPass123!`
 
 | Repo | Description |
 |------|-------------|
-| [homelab-setup](https://github.com/dm3n/homelab-setup) | This repo — full engineering OS |
+| [macintosh](https://github.com/dm3n/macintosh) | This repo — full engineering OS |
 | [airbank](https://github.com/dm3n/airbank) | QoE Platform — Next.js 16 + Gemini + RAG (private) |
 | [airbank-lander](https://github.com/dm3n/airbank-lander) | Marketing site (private) |
 | [VisionClaw-Meta-SDK](https://github.com/dm3n/VisionClaw-Meta-SDK) | AI vision for Meta Ray-Bans |
