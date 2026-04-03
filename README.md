@@ -2,7 +2,7 @@
 
 > Founder of [Airbank](https://github.com/dm3n/airbank) · AI-native M&A platform · Pre-seed
 
-This repository is the single source of truth for how I build, ship, and run Airbank — covering the full stack from AI agent development and automated deployment, to a self-hosted 24/7 agent cluster, persistent knowledge management, and team coordination. Updated as the company evolves.
+This repository is the single source of truth for how I build, ship, and run AI software companies. Airbank — covering the full stack from AI agent development and automated deployment, to a self-hosted 24/7 agent cluster, persistent knowledge management, and team coordination. Updated as the company evolves.
 
 ---
 
