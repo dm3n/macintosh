@@ -1,4 +1,4 @@
-# Daniel Edgar — Engineering OS & Homelab
+# Daniel Edgar — Macintosh Setup & Homelab
 
 > Founder of [Airbank](https://github.com/dm3n/airbank) · AI-native M&A platform · Pre-seed
 
