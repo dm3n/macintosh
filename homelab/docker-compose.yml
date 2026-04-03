@@ -1,0 +1,245 @@
+version: "3.9"
+
+# Airbank Agent Hub — Full Stack
+# Deploy: docker compose up -d
+# Logs:   docker compose logs -f [service]
+
+networks:
+  hub:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+
+  # ─── Infrastructure ──────────────────────────────────────────────────────────
+
+  hub-db:
+    image: postgres:16-alpine
+    container_name: hub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agenthub
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - hub
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d agenthub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hub-redis:
+    image: redis:7-alpine
+    container_name: hub-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - hub
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ─── MCP Gateway ─────────────────────────────────────────────────────────────
+
+  hub-mcp:
+    build: ./services/mcp-gateway
+    container_name: hub-mcp
+    restart: unless-stopped
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
+      GMAIL_USER: ${GMAIL_USER}
+      GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID}
+      GOOGLE_TASKS_LIST_ID: ${GOOGLE_TASKS_LIST_ID}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+    networks:
+      - hub
+    depends_on:
+      hub-db:
+        condition: service_healthy
+
+  # ─── Orchestrator ─────────────────────────────────────────────────────────────
+
+  hub-orchestrator:
+    build: ./services/orchestrator
+    container_name: hub-orchestrator
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID}
+      MORNING_REPORT_CRON: "0 7 * * *"
+    networks:
+      - hub
+    depends_on:
+      hub-db:
+        condition: service_healthy
+      hub-redis:
+        condition: service_healthy
+      hub-mcp:
+        condition: service_started
+
+  # ─── Telegram Bot ─────────────────────────────────────────────────────────────
+
+  hub-telegram:
+    build: ./services/telegram-bot
+    container_name: hub-telegram
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID}
+      REDIS_URL: redis://hub-redis:6379
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      ORCHESTRATOR_URL: http://hub-orchestrator:3000
+    networks:
+      - hub
+    depends_on:
+      - hub-orchestrator
+      - hub-redis
+
+  # ─── Executor ─────────────────────────────────────────────────────────────────
+
+  hub-executor:
+    build: ./services/executor
+    container_name: hub-executor
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
+      GMAIL_USER: ${GMAIL_USER}
+    networks:
+      - hub
+    depends_on:
+      hub-db:
+        condition: service_healthy
+      hub-redis:
+        condition: service_healthy
+
+  # ─── Agents ──────────────────────────────────────────────────────────────────
+
+  hub-agent-code:
+    build: ./services/agents/code
+    container_name: hub-agent-code
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      TARGET_REPOS: ${CODE_TARGET_REPOS}   # dm3n/airbank,dm3n/airbank-lander,dm3n/homelab-setup
+      AGENT_SCHEDULE: "0 */4 * * *"
+    networks:
+      - hub
+    depends_on:
+      - hub-mcp
+      - hub-redis
+
+  hub-agent-email:
+    build: ./services/agents/email
+    container_name: hub-agent-email
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      GMAIL_USER: ${GMAIL_USER}
+      AGENT_SCHEDULE: "*/30 * * * *"
+    networks:
+      - hub
+    depends_on:
+      - hub-mcp
+      - hub-redis
+
+  hub-agent-calendar:
+    build: ./services/agents/calendar
+    container_name: hub-agent-calendar
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID}
+      AGENT_SCHEDULE: "0 * * * *"
+    networks:
+      - hub
+    depends_on:
+      - hub-mcp
+      - hub-redis
+
+  hub-agent-linear:
+    build: ./services/agents/linear
+    container_name: hub-agent-linear
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      LINEAR_TEAM_ID: ${LINEAR_TEAM_ID}    # Airbank HQ team
+      AGENT_SCHEDULE: "0 */2 * * *"
+    networks:
+      - hub
+    depends_on:
+      - hub-mcp
+      - hub-redis
+
+  hub-agent-slack:
+    build: ./services/agents/slack
+    container_name: hub-agent-slack
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_CHANNELS: ${SLACK_CHANNELS}    # dev,customers,general
+      AGENT_SCHEDULE: "0 * * * *"
+    networks:
+      - hub
+    depends_on:
+      - hub-mcp
+      - hub-redis
+
+  hub-agent-todo:
+    build: ./services/agents/todo
+    container_name: hub-agent-todo
+    restart: unless-stopped
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
+      REDIS_URL: redis://hub-redis:6379
+      MCP_URL: http://hub-mcp:3001
+      GOOGLE_TASKS_LIST_ID: ${GOOGLE_TASKS_LIST_ID}
+      AGENT_SCHEDULE: "0 */2 * * *"
+    networks:
+      - hub
+    depends_on:
+      - hub-mcp
+      - hub-redis

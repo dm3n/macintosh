@@ -1,0 +1,23 @@
+# Environment
+.env
+homelab/.env
+**/.env.local
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Node
+node_modules/
+dist/
+.next/
+
+# Logs
+*.log
+vault-sync.log
+vault-sync.err
+
+# Secrets
+credentials.json
+*-credentials.json
+service-account*.json
