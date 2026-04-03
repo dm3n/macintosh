@@ -1,6 +1,6 @@
 # Homelab Architecture
 
-> Part of [dm3n/homelab-setup](https://github.com/dm3n/homelab-setup) — the complete engineering OS.
+> Part of [dm3n/macintosh](https://github.com/dm3n/macintosh) — the complete engineering OS.
 
 ## Core Principle
 

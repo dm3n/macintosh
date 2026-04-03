@@ -149,7 +149,7 @@ services:
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
       GITHUB_TOKEN: ${GITHUB_TOKEN}
-      TARGET_REPOS: ${CODE_TARGET_REPOS}   # dm3n/airbank,dm3n/airbank-lander,dm3n/homelab-setup
+      TARGET_REPOS: ${CODE_TARGET_REPOS}   # dm3n/airbank,dm3n/airbank-lander,dm3n/macintosh
       AGENT_SCHEDULE: "0 */4 * * *"
     networks:
       - hub
