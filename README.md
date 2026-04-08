@@ -14,7 +14,6 @@ This repository is the single source of truth for how I build, ship, and run AI 
 | [Development Workflow](#development-workflow) | Six-agent pipeline → GitHub → Vercel |
 | [Personal Knowledge Brain](#personal-knowledge-brain) | Raw → Process → Wiki → Query |
 | [Homelab](#homelab) | Self-hosted Proxmox cluster + 24/7 agents |
-| [Knowledge Brain (Obsidian)](#knowledge-brain-obsidian) | Persistent context system |
 | [Team Communication](#team-communication) | Slack · Linear · Notion |
 | [Tech Stack](#tech-stack) | Every tool, categorised |
 | [Airbank Stack](#airbank-stack) | Platform architecture |
@@ -481,65 +480,6 @@ homelab/
 → [Agent behaviour docs](docs/agents.md)
 → [Approval flow docs](docs/approval-flow.md)
 
----
-
-## Knowledge Brain (Obsidian)
-
-> No context is ever lost. Every session, decision, article, and conversation is captured in a structured, linked graph — readable by any AI model at any time.
-
-### Two Obsidian Vaults
-
-**Brain Vault** — personal knowledge base, synced via iCloud
-```
-Brain/
-├── Raw/             # PKB drop zone — sources waiting to be compiled
-│   ├── News/        # Articles, market intel
-│   ├── Blog/        # Essays, posts
-│   ├── Personal/    # Reflections, journal
-│   ├── Company/     # Meeting notes, decisions
-│   ├── Research/    # Papers, reports
-│   ├── Conversations/ # Call transcripts, chats
-│   ├── Inbox/       # Unsorted
-│   └── Processed/   # Archived after PKB processing
-├── Wiki/            # Compiled knowledge — built by PKB Processor
-│   ├── Entities/    # People · Companies
-│   ├── Concepts/    # Mental models · frameworks
-│   ├── SOPs/        # Standard operating procedures
-│   ├── Summaries/   # Source summaries with wikilinks
-│   └── Compiled/    # Saved PKB query answers
-├── Memory/          # AI agent memory — loaded at every Claude Code session
-├── Projects/        # Per-project notes + Airbank road-to-$1B plan
-├── Claude Sessions/ # Every Claude Code session auto-saved
-├── Claude Web Chats/# claude.ai conversations auto-exported nightly
-├── Apple Notes/     # iPhone/Mac notes exported nightly
-├── People/          # Investors, advisors, customers
-├── Airbank/         # Company hub with dataview queries
-├── Daily/           # Daily notes
-└── System/          # Automation scripts + LaunchAgents + PKB schema
-```
-
-**Airbank Code Vault** — live codebase as a graph, auto-synced every 10min
-```
-Airbank/
-├── Airbank Platform/    # 137 notes — one per source file
-│   ├── app/api/         # API routes (red nodes)
-│   ├── components/      # UI components (blue nodes)
-│   └── lib/             # Library modules (green nodes)
-└── Airbank Website/     # 19 notes
-```
-
-### Automation
-
-| Script | Schedule | What it does |
-|--------|----------|-------------|
-| `pkb-process.py` | Nightly + on-demand | Processes Raw/ inbox → compiles Wiki/ pages |
-| `pkb-query.py` | On-demand | Natural language query across entire Brain |
-| `sync-vault.py` | Every 10min (LaunchAgent) | `git pull` both Airbank repos → regenerate 174 code notes |
-| `brain-sync.sh` | Nightly 2am (LaunchAgent) | Export Apple Notes + git + PKB processing + connect wikilinks |
-| `save-session-to-brain.py` | Every session (Stop hook) | Save Claude Code session to Brain/Claude Sessions/ |
-| `sync-claude-chats.py` | Nightly | Export claude.ai web chats to Brain/Claude Web Chats/ |
-
-→ [Full knowledge brain docs](docs/knowledge-brain.md)
 
 ---
 
