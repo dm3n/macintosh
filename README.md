@@ -1,4 +1,4 @@
-# Daniel Ray Edgar — Macintosh + Claude Code + Homelab
+# Daniel Ray Edgar — Macintosh + Claude + Homelab
 
 > Founder of [Airbank](https://github.com/dm3n/airbank) · AI-native M&A platform · Pre-seed
 
