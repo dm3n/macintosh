@@ -129,7 +129,7 @@ The full system has five layers that work together. Every layer feeds every othe
 │   • Full diff review: correctness · security · performance · style       │
 │   • Checks for OWASP top 10, injection vectors, secrets in code          │
 │   • Verifies tests cover all changed logic                               │
-│   • Approves PR or returns specific change requests to Code Agent        │
+│   • Creates Linear task for human to approve/deny PR
 └──────────────────────────────┬───────────────────────────────────────────┘
                                │  approved
                                ▼
