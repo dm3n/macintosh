@@ -19,7 +19,7 @@ This repository is the single source of truth for how I build, ship, and run AI 
 | [Tech Stack](#tech-stack) | Every tool, categorised |
 | [Airbank Stack](#airbank-stack) | Platform architecture |
 
-<img src="assets/neofetch.png" alt="neofetch — dm3n@Mac · macOS 26.2 · Apple M4 · 16GB" width="600">
+<img src="assets/neofetch.png" alt="neofetch — dm3n@Mac · macOS 26.2 · Apple M4 · 16GB" >
 
 ---
 
