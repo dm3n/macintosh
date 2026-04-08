@@ -2,7 +2,7 @@
 
 > Founder of [Airbank](https://airbank.ca) · AI-native M&A platform · Pre-seed
 
-This repository is the single source of truth for how I build, ship, and run AI software companies. Everything from the AI agent development pipeline and automated deployment, to a self-hosted 24/7 agent cluster, a personal knowledge brain that compounds across every conversation, and full team coordination. Updated as the company evolves.
+This repository is the single source of truth for how I build, ship, and run AI software. Everything from the AI agent development pipeline and automated deployment, to a self-hosted 24/7 agent cluster, a personal knowledge brain that compounds across every conversation, and full team coordination. Updated as the company evolves.
 
 ---
 
