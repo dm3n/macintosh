@@ -19,24 +19,7 @@ This repository is the single source of truth for how I build, ship, and run AI 
 | [Tech Stack](#tech-stack) | Every tool, categorised |
 | [Airbank Stack](#airbank-stack) | Platform architecture |
 
-```
-dm3n@Mac
---------
-OS: macOS 26.2 25C56 arm64
-Host: Mac16,1
-Kernel: 25.2.0
-Uptime: 84 days, 7 hours, 55 mins
-Packages: 91 (brew)
-Shell: zsh 5.9
-Resolution: 1512x982, 1920x1080
-DE: Aqua
-WM: Quartz Compositor
-WM Theme: Blue (Dark)
-Terminal: WarpTerminal
-CPU: Apple M4
-GPU: Apple M4
-Memory: 2908MiB / 16384MiB
-```
+<img src="assets/neofetch.png" alt="neofetch — dm3n@Mac · macOS 26.2 · Apple M4 · 16GB" width="600">
 
 ---
 
