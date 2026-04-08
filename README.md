@@ -677,18 +677,6 @@ Login: `user@test.com` / `TestPass123!`
 
 ---
 
-## Repositories
-
-| Repo | Description |
-|------|-------------|
-| [macintosh](https://github.com/dm3n/macintosh) | This repo — full engineering OS |
-| [airbank](https://github.com/dm3n/airbank) | QoE Platform — Next.js 16 + Gemini + RAG (private) |
-| [airbank-lander](https://github.com/dm3n/airbank-lander) | Marketing site (private) |
-| [VisionClaw-Meta-SDK](https://github.com/dm3n/VisionClaw-Meta-SDK) | AI vision for Meta Ray-Bans |
-| [rogi-v2](https://github.com/dm3n/rogi-v2) | AI-native mortgage intake |
-| [uncertainty-propagation](https://github.com/dm3n/uncertainty-propagation) | Research paper |
-
----
 
 ## Contact
 
