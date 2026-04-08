@@ -84,7 +84,7 @@ The full system has five layers that work together. Every layer feeds every othe
 
 > Specs become features without touching code. I architect — agents plan, implement, test, review, and ship.
 
-### Six-Agent Pipeline
+### Five-Agent Pipeline
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -111,23 +111,17 @@ The full system has five layers that work together. Every layer feeds every othe
 │   • Uses shadcn/ui universally · follows all CLAUDE.md rules             │
 │   • Commits atomically with clear messages                               │
 └──────────────────────────────┬───────────────────────────────────────────┘
-                               │  code + tests written
-                        ┌──────┴──────┐
-                        │             │
-                        ▼             ▼
-         ┌──────────────────┐  ┌──────────────────────────────┐
-         │   TEST AGENT      │  │         QA AGENT              │
-         │                  │  │                               │
-         │ • Runs full       │  │ • End-to-end Playwright tests │
-         │   test suite      │  │ • Visual regression checks    │
-         │ • Coverage report │  │ • API contract validation     │
-         │ • Fails fast on   │  │ • Performance budget check    │
-         │   regressions     │  │ • Accessibility scan          │
-         └────────┬─────────┘  └──────────────┬───────────────┘
-                  │                            │
-                  └──────────────┬─────────────┘
-                                 │  all green
-                                 ▼
+                               │  code written
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           QA AGENT                                        │
+│                                                                            │
+│   • Runs full test suite · coverage report · fails fast on regressions   │
+│   • End-to-end Playwright tests · visual regression checks               │
+│   • API contract validation · performance budget · accessibility scan    │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │  all green
+                               ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         REVIEW AGENT                                      │
 │                                                                            │
@@ -152,9 +146,8 @@ The full system has five layers that work together. Every layer feeds every othe
 | Agent | Core Responsibility | Key Output |
 |-------|-------------------|------------|
 | **Plan** | Translate spec → implementation blueprint | `spec.md` · task list · risk flags |
-| **Code** | Write production code + tests | Feature branch · commits · tests |
-| **Test** | Verify correctness via test suite | Pass/fail · coverage report |
-| **QA** | Verify correctness end-to-end | Playwright results · regression report |
+| **Code** | Write production code | Feature branch · commits |
+| **QA** | Test suite + end-to-end Playwright + regression | Pass/fail · coverage · regression report |
 | **Review** | Code quality + security gate | Approval or change requests |
 | **Merge** | Ship to production | PR merged · deploy · notifications |
 
@@ -195,6 +188,8 @@ PR merged → Linear issue closes → Vercel deploys → Slack #dev notified
 ## Personal Knowledge Brain
 
 > Every article, call note, meeting, idea, and research paper I consume gets compiled into a living wiki that answers questions, surfaces connections, and gets smarter with every conversation.
+
+<img src="assets/brain-graph.png" alt="Obsidian Brain — Knowledge Graph" width="100%">
 
 ### The Problem It Solves
 
@@ -530,19 +525,6 @@ Airbank/
 │   └── lib/             # Library modules (green nodes)
 └── Airbank Website/     # 19 notes
 ```
-
-### Graph Colour Legend
-
-| Brain Vault | | Airbank Vault | |
-|-------------|---|---------------|---|
-| Cyan | MOC hub notes | Purple | Pages |
-| Green | Memory + Wiki | Blue | Components |
-| Purple | Projects | Red | API routes |
-| Blue | Claude Sessions | Green | Library |
-| Orange | Daily + Inbox | Amber | Hooks |
-| Pink | Apple Notes | Cyan | Index hubs |
-| Amber | People | | |
-| Red | Airbank | | |
 
 ### Automation
 
