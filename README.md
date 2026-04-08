@@ -181,7 +181,7 @@ PR merged → Linear issue closes → Vercel deploys → Slack #dev notified
               → Brain session saved → PKB processes insights
 ```
 
-→ [Full development workflow docs](docs/development-workflow.md)
+→ [Full development workflow docs](docs/development-workflow.md) 
 
 ---
 
