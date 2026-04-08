@@ -588,7 +588,7 @@ Customer call → Notion (auto-transcript)
 ```
 Next.js 16 · React 19 · TypeScript · Tailwind v4 · shadcn/ui
 Supabase (PostgreSQL + Auth + Storage)
-Google Cloud Storage · Vertex AI RAG · Gemini 2.0 Flash
+Google Cloud Storage · Vertex AI RAG · Gemini 3.0 Flash
 Anthropic Claude (AI chat) · Recharts · SheetJS
 Vercel
 ```
