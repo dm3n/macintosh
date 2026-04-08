@@ -1,8 +1,8 @@
-# Daniel Ray Edgar — Macintosh Setup & Homelab
+# Daniel Ray Edgar — Macintosh Setup & Engineering OS
 
 > Founder of [Airbank](https://github.com/dm3n/airbank) · AI-native M&A platform · Pre-seed
 
-This repository is the single source of truth for how I build, ship, and run AI software companies. Airbank — covering the full stack from AI agent development and automated deployment, to a self-hosted 24/7 agent cluster, persistent knowledge management, and team coordination. Updated as the company evolves.
+This repository is the single source of truth for how I build, ship, and run AI software companies. Everything from the AI agent development pipeline and automated deployment, to a self-hosted 24/7 agent cluster, a personal knowledge brain that compounds across every conversation, and full team coordination. Updated as the company evolves.
 
 ---
 
@@ -10,10 +10,11 @@ This repository is the single source of truth for how I build, ship, and run AI 
 
 | | |
 |---|---|
-| [Architecture](#architecture) | Full system overview |
-| [Development Workflow](#development-workflow) | AI agent pipeline → GitHub → Vercel |
+| [Architecture](#architecture) | Full five-layer system overview |
+| [Development Workflow](#development-workflow) | Six-agent pipeline → GitHub → Vercel |
+| [Personal Knowledge Brain](#personal-knowledge-brain) | Raw → Process → Wiki → Query |
 | [Homelab](#homelab) | Self-hosted Proxmox cluster + 24/7 agents |
-| [Knowledge Brain](#knowledge-brain) | Obsidian persistent context system |
+| [Knowledge Brain (Obsidian)](#knowledge-brain-obsidian) | Persistent context system |
 | [Team Communication](#team-communication) | Slack · Linear · Notion |
 | [Tech Stack](#tech-stack) | Every tool, categorised |
 | [Airbank Stack](#airbank-stack) | Platform architecture |
@@ -22,29 +23,32 @@ This repository is the single source of truth for how I build, ship, and run AI 
 
 ## Architecture
 
-The full system has four layers that work together:
+The full system has five layers that work together. Every layer feeds every other.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                           DEVELOPMENT LAYER                               │
+│                         DEVELOPMENT LAYER                                 │
 │                                                                            │
-│   Daniel (Architect)                                                       │
-│        │  natural language spec                                            │
-│        ▼                                                                   │
-│   Claude Code — Architect Agent                                            │
-│        │  creates plan + tasks                                             │
-│        ▼                                                                   │
-│   Coder Agent ──► feature branch ──► Pull Request                         │
-│                                           │                                │
-│   Reviewer Agent ─────────────────► Review & Merge                        │
-│                                           │                                │
-│                          GitHub ◄─────────┘                               │
-│                             │                                              │
-│                          Vercel ──► Production (auto-deploy)              │
+│   Daniel  ──► Plan Agent ──► Code Agent ──► Test Agent ──► QA Agent      │
+│   (spec)          │                                            │            │
+│                   └──────────────────────────────────────────►│            │
+│                                                          Review Agent      │
+│                                                                │            │
+│                                              PR ──► GitHub ──► Vercel     │
 └────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                            HOMELAB LAYER                                  │
+│                    PERSONAL KNOWLEDGE BRAIN LAYER                         │
+│                                                                            │
+│   Raw Sources ──► PKB Processor ──► Wiki                                  │
+│   (drop zone)      (Claude)       Entities · Concepts · SOPs              │
+│                                         │                                  │
+│   PKB Query ◄──────────────────────────┘                                  │
+│   (any question → Brain answers → good answers → back to Wiki)            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           HOMELAB LAYER                                   │
 │                                                                            │
 │   2-Node Proxmox Cluster  ──  Docker  ──  Tailscale VPN                   │
 │                                                                            │
@@ -57,11 +61,11 @@ The full system has four layers that work together:
 │                          KNOWLEDGE LAYER                                  │
 │                                                                            │
 │   Brain Vault (iCloud Obsidian)          Airbank Code Vault               │
-│   ├── Memory/    AI context              ├── components/  (blue)          │
-│   ├── Projects/  (purple)               ├── lib/          (green)         │
-│   ├── Sessions/  (blue)                 ├── api/          (red)           │
-│   ├── People/    (amber)                └── pages/        (purple)        │
-│   └── Daily/     (orange)                                                  │
+│   ├── Raw/       drop zone              ├── components/  (blue)           │
+│   ├── Wiki/      compiled knowledge     ├── lib/          (green)         │
+│   ├── Memory/    AI context             ├── api/          (red)           │
+│   ├── Sessions/  (blue)                 └── pages/        (purple)        │
+│   └── People/    (amber)                                                   │
 │                                          Auto-synced every 10min          │
 └────────────────────────────────────────────────────────────────────────────┘
 
@@ -78,37 +82,81 @@ The full system has four layers that work together:
 
 ## Development Workflow
 
-> Code is written by agents, reviewed by agents, deployed automatically. I architect — agents implement.
+> Specs become features without touching code. I architect — agents plan, implement, test, review, and ship.
 
-```mermaid
-flowchart TD
-    A[Daniel — Architect] -->|natural language spec| B[Claude Code\nArchitect Agent]
-    B -->|implementation plan + tasks| C[Coder Agent]
-    C -->|feature branch| D[Pull Request]
-    D --> E[Reviewer Agent]
-    E -->|approves or requests changes| F{Merge?}
-    F -->|yes| G[GitHub — main]
-    F -->|no| C
-    G --> H[Vercel Build]
-    H --> I[Production Deploy]
-    I --> J[Slack #dev notification]
+### Six-Agent Pipeline
 
-    style A fill:#7C3AED,color:#fff
-    style B fill:#1D4ED8,color:#fff
-    style C fill:#1D4ED8,color:#fff
-    style E fill:#1D4ED8,color:#fff
-    style G fill:#171717,color:#fff
-    style H fill:#171717,color:#fff
-    style I fill:#16A34A,color:#fff
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        SIGNAL (Input)                                     │
+│                                                                            │
+│   Linear issue  ·  Slack thread  ·  Claude Chat spec  ·  voice note      │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          PLAN AGENT                                       │
+│                                                                            │
+│   • Reads full codebase + Linear context + Brain memory                  │
+│   • Produces: spec.md · task list · risk flags · affected files          │
+│   • Blocks if spec is ambiguous — asks Daniel before writing code        │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │  approved plan
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          CODE AGENT                                       │
+│                                                                            │
+│   • Implements plan on a feature branch                                  │
+│   • Writes unit + integration tests alongside every file changed         │
+│   • Uses shadcn/ui universally · follows all CLAUDE.md rules             │
+│   • Commits atomically with clear messages                               │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │  code + tests written
+                        ┌──────┴──────┐
+                        │             │
+                        ▼             ▼
+         ┌──────────────────┐  ┌──────────────────────────────┐
+         │   TEST AGENT      │  │         QA AGENT              │
+         │                  │  │                               │
+         │ • Runs full       │  │ • End-to-end Playwright tests │
+         │   test suite      │  │ • Visual regression checks    │
+         │ • Coverage report │  │ • API contract validation     │
+         │ • Fails fast on   │  │ • Performance budget check    │
+         │   regressions     │  │ • Accessibility scan          │
+         └────────┬─────────┘  └──────────────┬───────────────┘
+                  │                            │
+                  └──────────────┬─────────────┘
+                                 │  all green
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         REVIEW AGENT                                      │
+│                                                                            │
+│   • Full diff review: correctness · security · performance · style       │
+│   • Checks for OWASP top 10, injection vectors, secrets in code          │
+│   • Verifies tests cover all changed logic                               │
+│   • Approves PR or returns specific change requests to Code Agent        │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │  approved
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        MERGE & SHIP                                       │
+│                                                                            │
+│   PR merged → Vercel deploy → Slack #dev notify                          │
+│   Linear issue auto-closes · Brain session auto-saved                    │
+│   PKB extracts key decisions → Brain/Wiki/                               │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Three Agent Roles
+### Agent Definitions
 
-| Agent | Role | Trigger |
-|-------|------|---------|
-| **Architect** | Reads codebase, designs plan, coordinates | Every new feature or system change |
-| **Coder** | Implements plan, writes tests, opens PR | During implementation |
-| **Reviewer** | Reviews diff — bugs, security, style | Before every merge |
+| Agent | Core Responsibility | Key Output |
+|-------|-------------------|------------|
+| **Plan** | Translate spec → implementation blueprint | `spec.md` · task list · risk flags |
+| **Code** | Write production code + tests | Feature branch · commits · tests |
+| **Test** | Verify correctness via test suite | Pass/fail · coverage report |
+| **QA** | Verify correctness end-to-end | Playwright results · regression report |
+| **Review** | Code quality + security gate | Approval or change requests |
+| **Merge** | Ship to production | PR merged · deploy · notifications |
 
 Agent definitions live in `.claude/agents/` inside each project repo.
 
@@ -130,16 +178,150 @@ Every push to `main` triggers a Vercel production deploy. All work goes through 
 Linear issue created
     │  branch name from issue slug
     ▼
-Claude Code reads issue as context
+Plan Agent reads issue as context
     │
     ▼
-Feature branch → PR (references Linear ID)
-    │  auto-links in Linear
+Feature branch → Code Agent → Tests → QA → Review → PR
+    │  references Linear ID
     ▼
 PR merged → Linear issue closes → Vercel deploys → Slack #dev notified
+              → Brain session saved → PKB processes insights
 ```
 
 → [Full development workflow docs](docs/development-workflow.md)
+
+---
+
+## Personal Knowledge Brain
+
+> Every article, call note, meeting, idea, and research paper I consume gets compiled into a living wiki that answers questions, surfaces connections, and gets smarter with every conversation.
+
+### The Problem It Solves
+
+I read hundreds of sources a week — news, blog posts, investor calls, customer conversations, research. Without a system, 95% evaporates. With this system, every source is processed, linked, and queryable forever.
+
+### Four-Phase Pipeline
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         PHASE 1: RAW DROP ZONE                           │
+│                                                                            │
+│   Brain/Raw/                                                               │
+│   ├── News/          articles · market intel · competitor updates        │
+│   ├── Blog/          essays · frameworks · thought leadership            │
+│   ├── Personal/      reflections · ideas · journal entries               │
+│   ├── Company/       meeting notes · decisions · customer intel          │
+│   ├── Research/      papers · reports · deep analysis                    │
+│   ├── Conversations/ call transcripts · interview notes · chats          │
+│   └── Inbox/         unsorted drop zone (auto-classified)                │
+│                                                                            │
+│   Drop a file here. That's it.                                            │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                      PHASE 2: LLM COMPILER                                │
+│                                                                            │
+│   pkb-process.py  (runs nightly + on-demand)                             │
+│                                                                            │
+│   For each raw file:                                                       │
+│   1. Detect source type (news / blog / personal / company / research)    │
+│   2. Load PKB schema (Brain/System/PKB/schema.md) — processing rules     │
+│   3. Call Claude: summarise · extract entities · find cross-refs         │
+│   4. Write output to Wiki/ · archive original to Raw/Processed/          │
+│                                                                            │
+│   Schema defines: summary length · entity rules · SOP triggers ·        │
+│   cross-reference rules · page templates · quality standards             │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        PHASE 3: COMPILED WIKI                             │
+│                                                                            │
+│   Brain/Wiki/                                                              │
+│   ├── Entities/                                                            │
+│   │   ├── People/        one page per person — context · interactions    │
+│   │   └── Companies/     one page per company — relevance to Airbank     │
+│   ├── Concepts/           mental models · frameworks · principles        │
+│   ├── Frameworks/         structured playbooks (Go-to-Market etc.)       │
+│   ├── SOPs/               standard operating procedures                  │
+│   ├── Summaries/          source summaries with wikilinks                │
+│   └── Compiled/           Q&A answers saved from queries                 │
+│                                                                            │
+│   Every page links to related pages. Obsidian graph shows the web.       │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                       PHASE 4: QUERY & COMMAND                            │
+│                                                                            │
+│   pkb-query.py — ask any question across 400K+ documents                 │
+│                                                                            │
+│   $ pkb-query "what does Andrew Auslander look for in investments?"      │
+│   $ pkb-query "summarise everything we know about private credit"        │
+│   $ pkb-query "what are the open action items from customer calls?"      │
+│                                                                            │
+│   Searches: Wiki/ · Memory/ · People/ · Projects/ · Sessions/            │
+│   Good answers: saved to Wiki/Compiled/ · fed back into the graph        │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Feedback Loop
+
+Every conversation makes the Brain smarter:
+
+```
+Claude Code session ends
+    │  Stop hook fires
+    ▼
+Brain/Claude Sessions/[date-project-title].md saved
+
+    + PKB extracts decisions, insights, entity updates from session
+    ▼
+Brain/Wiki/ updated (person pages · concept pages · compiled answers)
+
+    +
+Claude Chat (claude.ai)
+    │  bookmarklet export
+    ▼
+Brain/Claude Web Chats/ → nightly brain-sync connects wikilinks
+    ▼
+All future sessions load richer context
+```
+
+### PKB Commands
+
+```bash
+# Process all pending Raw/ files
+python3 ~/.claude/scripts/pkb-process.py
+
+# Dry run — see what would be processed
+python3 ~/.claude/scripts/pkb-process.py --dry-run
+
+# Process a single file
+python3 ~/.claude/scripts/pkb-process.py --file ~/Desktop/article.md
+
+# Query the Brain
+python3 ~/.claude/scripts/pkb-query.py "your question"
+
+# Query and save the answer to Wiki/Compiled/
+python3 ~/.claude/scripts/pkb-query.py "your question" --save
+
+# Interactive query REPL
+python3 ~/.claude/scripts/pkb-query.py --interactive
+```
+
+### PKB Schema
+
+The schema (`Brain/System/PKB/schema.md`) defines exactly how the LLM processes each source type:
+- **Summary format** — length, structure, bullet style per source type
+- **Entity extraction rules** — what to pull out and where to put it
+- **Page templates** — Person, Company, Concept, SOP
+- **Cross-reference rules** — how to link to existing notes
+- **SOP triggers** — when to automatically generate a process page
+- **Quality standards** — precision over volume, never hallucinate, action-orientation
+
+→ [PKB Schema](Brain/System/PKB/schema.md)
 
 ---
 
@@ -242,6 +424,7 @@ Executor delivers:
   • Email Agent: 11 threads processed, 3 drafts ready
   • Linear Agent: 4 new issues, sprint 67% complete
   • Slack Agent: 2 threads flagged in #customers
+  • PKB: 7 Raw files processed → 3 people · 2 companies · 1 SOP
 
 ✅ PENDING APPROVAL — 7 items
   [View Queue]
@@ -303,17 +486,30 @@ homelab/
 
 ---
 
-## Knowledge Brain
+## Knowledge Brain (Obsidian)
 
-> No context is ever lost. Every session, decision, and project note is captured in a structured, linked graph — readable by any AI model at any time.
-
-<img src="assets/brain-graph.png" alt="Obsidian Brain — Knowledge Graph" width="100%">
+> No context is ever lost. Every session, decision, article, and conversation is captured in a structured, linked graph — readable by any AI model at any time.
 
 ### Two Obsidian Vaults
 
 **Brain Vault** — personal knowledge base, synced via iCloud
 ```
 Brain/
+├── Raw/             # PKB drop zone — sources waiting to be compiled
+│   ├── News/        # Articles, market intel
+│   ├── Blog/        # Essays, posts
+│   ├── Personal/    # Reflections, journal
+│   ├── Company/     # Meeting notes, decisions
+│   ├── Research/    # Papers, reports
+│   ├── Conversations/ # Call transcripts, chats
+│   ├── Inbox/       # Unsorted
+│   └── Processed/   # Archived after PKB processing
+├── Wiki/            # Compiled knowledge — built by PKB Processor
+│   ├── Entities/    # People · Companies
+│   ├── Concepts/    # Mental models · frameworks
+│   ├── SOPs/        # Standard operating procedures
+│   ├── Summaries/   # Source summaries with wikilinks
+│   └── Compiled/    # Saved PKB query answers
 ├── Memory/          # AI agent memory — loaded at every Claude Code session
 ├── Projects/        # Per-project notes + Airbank road-to-$1B plan
 ├── Claude Sessions/ # Every Claude Code session auto-saved
@@ -322,7 +518,7 @@ Brain/
 ├── People/          # Investors, advisors, customers
 ├── Airbank/         # Company hub with dataview queries
 ├── Daily/           # Daily notes
-└── System/          # Automation scripts + LaunchAgents
+└── System/          # Automation scripts + LaunchAgents + PKB schema
 ```
 
 **Airbank Code Vault** — live codebase as a graph, auto-synced every 10min
@@ -335,14 +531,12 @@ Airbank/
 └── Airbank Website/     # 19 notes
 ```
 
-174 linked notes. Import relationships become wikilinks — the graph shows live dependency connections across the entire codebase.
-
 ### Graph Colour Legend
 
 | Brain Vault | | Airbank Vault | |
 |-------------|---|---------------|---|
 | Cyan | MOC hub notes | Purple | Pages |
-| Green | Memory | Blue | Components |
+| Green | Memory + Wiki | Blue | Components |
 | Purple | Projects | Red | API routes |
 | Blue | Claude Sessions | Green | Library |
 | Orange | Daily + Inbox | Amber | Hooks |
@@ -354,9 +548,12 @@ Airbank/
 
 | Script | Schedule | What it does |
 |--------|----------|-------------|
-| `sync-vault.py` | Every 10min (LaunchAgent) | `git pull` both Airbank repos → scan all TS/TSX → regenerate 174 notes |
-| `export-brain.sh` | Nightly (LaunchAgent) | Export Apple Notes + git summaries → Brain vault |
-| Claude Code memory | Every session | Reads `Memory/MEMORY.md`, writes new context on completion |
+| `pkb-process.py` | Nightly + on-demand | Processes Raw/ inbox → compiles Wiki/ pages |
+| `pkb-query.py` | On-demand | Natural language query across entire Brain |
+| `sync-vault.py` | Every 10min (LaunchAgent) | `git pull` both Airbank repos → regenerate 174 code notes |
+| `brain-sync.sh` | Nightly 2am (LaunchAgent) | Export Apple Notes + git + PKB processing + connect wikilinks |
+| `save-session-to-brain.py` | Every session (Stop hook) | Save Claude Code session to Brain/Claude Sessions/ |
+| `sync-claude-chats.py` | Nightly | Export claude.ai web chats to Brain/Claude Web Chats/ |
 
 → [Full knowledge brain docs](docs/knowledge-brain.md)
 
@@ -375,7 +572,9 @@ Notion ──── SOPs, meeting recordings, company knowledge base
 ```
 Customer call → Notion (auto-transcript)
                     │
-                    ├──► Linear issue → Claude Code → PR → Deploy → Slack #dev
+                    ├──► Linear issue → Plan Agent → Code → Test → QA → Review → Deploy → Slack #dev
+                    │
+                    ├──► Key decisions → Brain/Wiki/ (via PKB Company drop)
                     │
                     └──► Key decisions → Obsidian Brain Memory
                                               │
@@ -401,8 +600,9 @@ Customer call → Notion (auto-transcript)
 
 | Tool | Role |
 |------|------|
-| **Claude Code** | Primary dev environment — AI agent pipeline (architect → coder → reviewer) |
+| **Claude Code** | Primary dev environment — six-agent pipeline (plan → code → test → QA → review → ship) |
 | **Claude (claude.ai)** | Strategy, writing, research, complex reasoning |
+| **PKB Query** | Cross-session knowledge synthesis — ask anything across 400K+ Brain documents |
 | **Gemini 2.0 Flash** | In-product AI — QoE document extraction via Vertex AI |
 | **Perplexity** | Live internet research — competitors, news, market intel |
 
@@ -419,7 +619,8 @@ Customer call → Notion (auto-transcript)
 
 | Tool | Role |
 |------|------|
-| **Obsidian** | Persistent AI brain — cross-session memory, graph-linked notes |
+| **Obsidian (Brain Vault)** | Personal knowledge brain — Raw drop zone + compiled Wiki + persistent AI memory |
+| **Obsidian (Code Vault)** | Live codebase as a graph — 174 auto-generated notes, import-linked |
 | **Notion** | Team wiki — SOPs, meeting recordings, shared docs |
 | **Apple Notes** | Quick capture — exported nightly to Brain vault |
 
