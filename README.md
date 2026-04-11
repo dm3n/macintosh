@@ -524,7 +524,10 @@ Customer call → Notion (auto-transcript)
 
 | Tool | Role |
 |------|------|
-| **Claude Code** | Primary dev environment — six-agent pipeline (plan → code → test → QA → review → ship) |
+| **Claude Code** | Primary coding agent — six-agent pipeline (plan → code → test → QA → review → ship) |
+| **OpenCode** | Secondary coding agent — TUI, multi-model |
+| **Codex CLI** | Coding agent — OpenAI, scripted + interactive |
+| **Gemini CLI** | Coding agent — Google, Gemini 2.0 Flash |
 | **Claude (claude.ai)** | Strategy, writing, research, complex reasoning |
 | **PKB Query** | Cross-session knowledge synthesis — ask anything across 400K+ Brain documents |
 | **Gemini 2.0 Flash** | In-product AI — QoE document extraction via Vertex AI |
@@ -537,7 +540,7 @@ Customer call → Notion (auto-transcript)
 | **GitHub** | All repos — private (Airbank products) + public (open source) |
 | **Vercel** | Auto-deploy on push to `main`, preview URLs per PR |
 | **Linear** | Dev sprints, issues, roadmap — GitHub PR integration |
-| **Warp + Zsh** | Terminal — AI command suggestions, persistent history, split panes |
+| **Superset + Zsh** | Terminal (replaced Warp) |
 
 ### Knowledge
 
@@ -578,6 +581,7 @@ Customer call → Notion (auto-transcript)
 | **Tailscale** | VPN mesh — zero-config secure cluster access from anywhere |
 
 → [Full tech stack docs](docs/tech-stack.md)
+→ [Dev environment setup](docs/dev-environment.md)
 
 ---
 
