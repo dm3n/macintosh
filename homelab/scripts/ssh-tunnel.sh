@@ -2,6 +2,8 @@
 # Open SSH tunnels for local debugging
 # Usage: ./scripts/ssh-tunnel.sh <node-ip>
 
+set -euo pipefail
+
 NODE_IP="${1:?Usage: ssh-tunnel.sh <node-ip>}"
 
 echo "Opening tunnels to $NODE_IP..."

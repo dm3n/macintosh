@@ -191,8 +191,8 @@ cd "/Users/dm3n/Airbank/Airbank Website"
 npm run dev          # → http://localhost:3001
 
 # ROGI
-cd "/Users/dm3n/Projects by Claude/rogi"
+cd "/Users/dm3n/Projects/rogi"
 npm run dev -- --port 3002  # → http://localhost:3002
 ```
 
-Terminal: **Warp** with Zsh. AI command suggestions enabled. Split panes for dev server + Claude Code side by side.
+Terminal: **Superset** with Zsh. AI command suggestions enabled. Split panes for dev server + Claude Code side by side.

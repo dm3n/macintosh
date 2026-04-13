@@ -43,7 +43,7 @@ AI-augmented document collection and analysis.
 | Auth | Supabase Auth via `@supabase/ssr` (cookie sessions) |
 | File Storage | Supabase Storage (`qoe-documents` bucket, private) |
 | Document Storage | Google Cloud Storage (`qoe-rag-documents` bucket) |
-| AI / Extraction | Gemini 2.0 Flash via Vertex AI |
+| AI / Extraction | Gemini 3 Flash via Vertex AI |
 | RAG Engine | Vertex AI RAG API (one corpus per workbook) |
 | AI Chat | Anthropic Claude + Gemini (model-selectable) |
 | Charts | Recharts |
@@ -60,7 +60,7 @@ Browser → Next.js App Router (Vercel Edge)
     ┌─────────┼──────────────┐
     ▼         ▼              ▼
 Supabase   Vertex AI     Google Cloud
-(DB/Auth/  (Gemini 2.0   Storage
+(DB/Auth/  (Gemini 3   Storage
  Storage)   + RAG)       (Documents)
 ```
 
@@ -90,7 +90,7 @@ Supabase   Vertex AI     Google Cloud
 | Supabase Storage | `qoe-documents` (private) |
 | GCP project | `nodebase-473513` |
 | GCP location | `us-central1` |
-| Gemini model | `gemini-2.0-flash-001` |
+| Gemini model | `gemini-3` |
 | Deployment | Vercel (auto-deploy on push to `main`) |
 
 ---
@@ -120,7 +120,7 @@ All tables have Row Level Security (RLS) enabled.
 | `proxy.ts` not `middleware.ts` | Next.js 16 renamed middleware — creating both causes build error |
 | Vertex AI RAG (not LangChain) | Native GCP integration, no abstraction layer, lower latency |
 | One Supabase project across all products | Shared auth, shared storage, single DB to manage |
-| Gemini 2.0 Flash (not Pro) | Flash is available in this GCP project + faster for extraction |
+| Gemini 3 Flash (not Pro) | Flash is available in this GCP project + faster for extraction |
 | SSE for analysis stream | Real-time progress for a 5-minute operation — better UX than polling |
 | Demo bypass (`/^\d$/.test(id)`) | Demo workbooks (IDs 1–5) bypass API — no auth required for demo |
 

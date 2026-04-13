@@ -53,7 +53,11 @@ services:
   # ─── MCP Gateway ─────────────────────────────────────────────────────────────
 
   hub-mcp:
-    build: ./services/mcp-gateway
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: mcp-gateway
     container_name: hub-mcp
     restart: unless-stopped
     environment:
@@ -74,11 +78,16 @@ services:
   # ─── Orchestrator ─────────────────────────────────────────────────────────────
 
   hub-orchestrator:
-    build: ./services/orchestrator
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: orchestrator
     container_name: hub-orchestrator
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -98,7 +107,11 @@ services:
   # ─── Telegram Bot ─────────────────────────────────────────────────────────────
 
   hub-telegram:
-    build: ./services/telegram-bot
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: telegram-bot
     container_name: hub-telegram
     restart: unless-stopped
     environment:
@@ -116,11 +129,16 @@ services:
   # ─── Executor ─────────────────────────────────────────────────────────────────
 
   hub-executor:
-    build: ./services/executor
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: executor
     container_name: hub-executor
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -140,11 +158,16 @@ services:
   # ─── Agents ──────────────────────────────────────────────────────────────────
 
   hub-agent-code:
-    build: ./services/agents/code
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: agents/code
     container_name: hub-agent-code
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -158,11 +181,16 @@ services:
       - hub-redis
 
   hub-agent-email:
-    build: ./services/agents/email
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: agents/email
     container_name: hub-agent-email
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -175,11 +203,16 @@ services:
       - hub-redis
 
   hub-agent-calendar:
-    build: ./services/agents/calendar
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: agents/calendar
     container_name: hub-agent-calendar
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -192,11 +225,16 @@ services:
       - hub-redis
 
   hub-agent-linear:
-    build: ./services/agents/linear
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: agents/linear
     container_name: hub-agent-linear
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -210,11 +248,16 @@ services:
       - hub-redis
 
   hub-agent-slack:
-    build: ./services/agents/slack
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: agents/slack
     container_name: hub-agent-slack
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
@@ -228,11 +271,16 @@ services:
       - hub-redis
 
   hub-agent-todo:
-    build: ./services/agents/todo
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: agents/todo
     container_name: hub-agent-todo
     restart: unless-stopped
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3}
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001

@@ -7,7 +7,7 @@ Single source of truth for the local dev pipeline, coding agents, and knowledge 
 
 ## Terminal
 
-**Superset + Zsh** — primary terminal (replaced Warp).
+**Superset + Zsh** — primary terminal.
 
 ---
 
@@ -37,7 +37,7 @@ Four AI coding agents installed and configured globally. All share the same cont
 ### Gemini CLI
 - **CLI**: `gemini`
 - **Global config**: `~/.gemini/GEMINI.md`
-- **Default model**: `gemini-2.0-flash-001`
+- **Default model**: `gemini-3`
 
 ### Global Superpowers Standard (All Agents)
 - Superpowers is required at the user/global scope for every coding agent.
@@ -142,6 +142,6 @@ Apply in every project, every agent, every session:
 - Always use **shadcn/ui** for all UI components
 - Do NOT create `middleware.ts` in Next.js 16 — use `proxy.ts`
 - Supabase new key format: `sb_publishable_` / `sb_secret_`
-- Default Gemini model: `gemini-2.0-flash-001`
+- Default Gemini model: `gemini-3`
 - Default Claude model: `claude-sonnet-4-6`
 - Supabase project ID: `qlhdslbpgnctshcpiqfv`

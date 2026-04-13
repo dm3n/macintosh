@@ -31,13 +31,11 @@
    - Google Tasks API
 4. Create **OAuth 2.0 credentials** (Desktop app type)
 5. Copy Client ID + Secret → `.env`
-6. Run the one-time OAuth flow to get a refresh token:
-
-```bash
-cd scripts
-node get-google-token.js
-# Opens browser → sign in → copy refresh token → paste to .env
-```
+6. Complete OAuth consent and capture the refresh token for your user.
+7. Store values in `homelab/.env`:
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+   - `GOOGLE_REFRESH_TOKEN`
 
 ---
 
@@ -56,8 +54,8 @@ node get-google-token.js
 ssh root@<node1-ip>
 
 # Clone repo
-git clone https://github.com/dm3n/homelab.git /opt/agenthub
-cd /opt/agenthub
+git clone https://github.com/dm3n/macintosh.git /opt/agenthub
+cd /opt/agenthub/homelab
 
 # Copy and fill in env
 cp .env.example .env
@@ -78,8 +76,8 @@ docker compose logs -f hub-orchestrator
 # Check all containers running
 docker compose ps
 
-# Test Telegram bot (should get a message)
-docker compose exec hub-telegram node test-ping.js
+# Check orchestrator logs
+docker compose logs -f hub-orchestrator
 
 # Check DB schema applied
 docker compose exec hub-db psql -U agenthub -d agenthub -c "\dt"
@@ -91,8 +89,8 @@ docker compose exec hub-db psql -U agenthub -d agenthub -c "\dt"
 
 ```bash
 ssh root@<node2-ip>
-git clone https://github.com/dm3n/homelab.git /opt/agenthub
-cd /opt/agenthub
+git clone https://github.com/dm3n/macintosh.git /opt/agenthub
+cd /opt/agenthub/homelab
 cp .env.example .env
 # Copy same .env values from node1
 # Do NOT start — standby only

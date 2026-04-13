@@ -11,7 +11,7 @@ Complete catalogue of every tool in the personal and company stack, organised by
 | **Claude Code** | Primary development environment | AI-native terminal IDE — architects, codes, reviews, and deploys. Agents handle full implementation loops. |
 | **Claude (claude.ai)** | Strategy, writing, research | Complex reasoning, pitch drafting, market analysis, long-context work |
 | **Perplexity** | Live internet research | Real-time competitor monitoring, news, market intelligence with citations |
-| **Gemini 2.0 Flash** | In-product AI (Airbank) | Document extraction, QoE analysis via Vertex AI |
+| **Gemini 3 Flash** | In-product AI (Airbank) | Document extraction, QoE analysis via Vertex AI |
 | **Vertex AI** | AI infrastructure (Airbank) | RAG corpus management, Gemini model serving, GCP integration |
 
 ---
@@ -20,7 +20,7 @@ Complete catalogue of every tool in the personal and company stack, organised by
 
 | Tool | Role | Why |
 |------|------|-----|
-| **Warp + Zsh** | Terminal | AI command suggestions, persistent session history, split panes, fast search |
+| **Superset + Zsh** | Terminal | Fast shell workflow with persistent sessions and split panes |
 | **GitHub** | Version control + code hosting | All repos — private (Airbank products) and public (open source) |
 | **Vercel** | Deployment | Zero-config Next.js deploys, preview URLs per PR, edge network |
 | **Linear** | Project management | Dev sprints, issue tracking, GitHub PR integration, roadmap |

@@ -1,6 +1,8 @@
 -- Airbank Agent Hub — Postgres Schema
 -- Run on fresh DB: psql $DB_URL < database/schema.sql
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ─── Agents ──────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS agents (
@@ -17,7 +19,9 @@ INSERT INTO agents (id, display_name) VALUES
   ('code',     'Code Agent'),
   ('email',    'Email Agent'),
   ('calendar', 'Calendar Agent'),
-  ('todo',     'Todo Agent')
+  ('todo',     'Todo Agent'),
+  ('linear',   'Linear Agent'),
+  ('slack',    'Slack Agent')
 ON CONFLICT DO NOTHING;
 
 -- ─── Jobs ────────────────────────────────────────────────────────────────────
@@ -44,7 +48,7 @@ CREATE TABLE IF NOT EXISTS pending_actions (
   agent_id      TEXT NOT NULL REFERENCES agents(id),
   action_type   TEXT NOT NULL,
   -- 'github_pr' | 'send_email' | 'create_event' | 'update_event'
-  -- 'create_task' | 'update_task'
+  -- 'create_task' | 'update_task' | 'draft_note'
   summary       TEXT NOT NULL,   -- 1-2 sentence description for Telegram
   full_output   TEXT NOT NULL,   -- Full agent output shown on "View"
   payload       JSONB NOT NULL,  -- Executor uses this to deliver
