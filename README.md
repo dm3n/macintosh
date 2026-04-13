@@ -102,18 +102,6 @@ docker compose up -d --build
     └── lib/
 ```
 
-## Scope (No Bluff)
-
-Implemented:
-- install/bootstrap/validate pipeline
-- compose stack + database schema
-- runnable scaffolds for all runtime services
-- consolidated docs aligned to current workflow and approvals model
-
-In progress:
-- production-grade integration handlers and retries
-- deeper e2e runtime tests and observability
-
 ## Standards
 
 - `shadcn/ui` for UI work
