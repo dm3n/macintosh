@@ -1,54 +1,54 @@
-# Agent System
+# Agents
 
-## Orchestrator
+This system has two distinct agent layers:
 
-Role:
-- route jobs
-- trigger schedules
-- aggregate state
-- generate morning summary
+1. **Primary CLI coding agents** used for day-to-day software development.
+2. **Homelab runtime domain agents** used for MCP-integrated automation workflows.
 
-## Code Agent
+## 1) Primary CLI Coding Agents
 
-Role:
-- analyze target repos
-- draft code changes and PR-ready outputs
-- surface test/quality gaps
+These are the main development agents in the local environment.
 
-## Email Agent
+| Agent | Role | Config |
+|---|---|---|
+| **Claude Code** | Primary implementation/review/deep context execution | `~/.claude/CLAUDE.md` |
+| **Codex CLI** | High-speed coding and repo operations | `~/.codex/AGENTS.md` |
+| **Gemini CLI** | Secondary coding path with Gemini models | `~/.gemini/GEMINI.md` |
+| **OpenCode** | Alternate coding environment with plugin support | `~/.config/opencode/AGENTS.md` |
 
-Role:
-- analyze inbox context
-- draft replies
-- flag urgent threads
+Shared requirements across all four:
+- superpowers installed and active
+- same core project/brain context
+- same engineering standards
 
-## Calendar Agent
+## 2) Homelab Runtime Agents (MCP/Software Domain)
 
-Role:
-- detect scheduling conflicts
-- draft create/update event actions
+These are not the primary coding CLIs. They are domain automation workers in the homelab runtime.
 
-## Linear Agent
+### Core Runtime Services
 
-Role:
-- triage issues and state transitions
-- generate sprint and backlog summaries
+| Service | Responsibility |
+|---|---|
+| **Orchestrator** | Dispatches jobs and schedules runs |
+| **MCP Gateway** | Provides integration/tool abstraction |
+| **Approval Gateway** | Syncs pending actions with Linear approvals |
+| **Executor** | Delivers approved actions |
 
-## Slack Agent
+### Domain Agents
 
-Role:
-- summarize high-signal channels
-- draft outbound updates and escalations
+| Agent | Domain |
+|---|---|
+| **Code Agent** | Repository scanning and draft code actions |
+| **Email Agent** | Inbox analysis and draft replies |
+| **Calendar Agent** | Conflict detection and draft event actions |
+| **Linear Agent** | Backlog/sprint triage and updates |
+| **Slack Agent** | Channel signal summaries and draft posts |
+| **Todo Agent** | Task prioritization and draft task updates |
 
-## Todo Agent
+## Approval and Delivery Boundary
 
-Role:
-- prioritize tasks
-- flag overdue/blocker items
-- draft task updates
+- Runtime/domain agents create pending actions.
+- Approval happens in Linear.
+- Executor performs delivery only for approved actions.
 
-## Approval + Execution
-
-- Every agent output is a pending action.
-- Approval is tracked in Linear.
-- Executor delivers only approved actions.
+This keeps coding-agent workflows and runtime automation responsibilities cleanly separated.

@@ -13,21 +13,18 @@ Single source of truth for the local dev pipeline, coding agents, and knowledge 
 
 ## Coding Agents
 
-Four AI coding agents installed and configured globally. All share the same context via their respective config files so every agent knows the full system — Brain vault, active projects, stack rules, homelab.
+Four AI coding agents are configured globally. They share aligned context (Brain vault, project paths, standards, and operating rules).
 
 ### Claude Code (primary)
 - **CLI**: `claude`
 - **Global config**: `~/.claude/CLAUDE.md`
 - **Auto-memory**: `~/.claude/projects/-Users-dm3n/memory/MEMORY.md`
-- **Skills**: `~/.claude/skills/` (commit, review-pr, simplify, schedule, loop, claude-api, etc.)
-- **Hooks**: configured in `~/.claude/settings.json`
-- **MCP servers**: Gmail, Google Calendar (via claude.ai MCP)
+- **Hooks**: `~/.claude/settings.json`
 
 ### OpenCode
 - **CLI**: `opencode`
 - **Global config**: `~/.config/opencode/AGENTS.md`
-- **Plugin**: `@opencode-ai/plugin` v1.4.0
-- **Built-in agents**: build, plan, explore, general, summary, title, compaction
+- **Plugin base**: `@opencode-ai/plugin`
 
 ### Codex CLI
 - **CLI**: `codex`
@@ -40,61 +37,72 @@ Four AI coding agents installed and configured globally. All share the same cont
 - **Default model**: `gemini-3`
 
 ### Global Superpowers Standard (All Agents)
-- Superpowers is required at the user/global scope for every coding agent.
-- Codex: repo at `~/.codex/superpowers` + symlink `~/.agents/skills/superpowers -> ~/.codex/superpowers/skills`.
-- Claude Code: plugin marketplace `obra/superpowers-marketplace` + `superpowers@superpowers-marketplace` installed with `--scope user`.
-- Gemini CLI: extension source `https://github.com/obra/superpowers` installed and enabled.
-- OpenCode: plugin `superpowers@git+https://github.com/obra/superpowers.git` in `~/.config/opencode/opencode.json`.
-- Standard update path: `git -C ~/.codex/superpowers pull --ff-only` plus CLI restart.
+
+Superpowers is required at user/global scope for every coding agent in this environment.
+
+Full standard and workflow details:
+- [docs/superpowers.md](superpowers.md)
+
+Macintosh install baseline:
+- Codex: `~/.codex/superpowers` + `~/.agents/skills/superpowers` symlink
+- Claude Code: Superpowers plugin installed at user scope
+- Gemini CLI: Superpowers extension installed
+- OpenCode: Superpowers plugin configured globally
+
+Update baseline:
+
+```bash
+git -C ~/.codex/superpowers pull --ff-only
+```
 
 ---
 
 ## Shared Agent Context
 
-All four configs contain the same foundational context:
-- Who Daniel is and what Airbank is building
-- Brain vault path + PKB pipeline commands
-- Active projects, ports, local paths
-- Universal rules (shadcn/ui, no middleware.ts, Supabase key format, model defaults)
-- Homelab repo reference + approval model
+All four CLI agent configs include:
+- user/project context
+- Brain vault references
+- active project paths and ports
+- engineering standards and model defaults
+- homelab references
 
 ---
 
 ## Knowledge System — Brain Vault
 
-Personal knowledge base running in Obsidian, synced via iCloud.
+Personal knowledge base in Obsidian, synced via iCloud.
 
 **Vault path**: `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Brain/`
 
 ### Directory Structure
 
-```
+```text
 Brain/
 ├── Memory/
-│   └── MEMORY.md              # Master memory index (loaded by all agents at session start)
-├── Raw/                       # Drop zone for source material
-│   ├── News/                  # Articles, market intel, competitor news
-│   ├── Blog/                  # Essays, posts, thought leadership
-│   ├── Personal/              # Reflections, ideas, journal
-│   ├── Company/               # Meeting notes, decisions, customer intel
-│   ├── Research/              # Papers, reports, deep analysis
-│   ├── Conversations/         # Transcripts, call notes, interviews
-│   └── Inbox/                 # Unsorted drop zone
+│   └── MEMORY.md
+├── Raw/
+│   ├── News/
+│   ├── Blog/
+│   ├── Personal/
+│   ├── Company/
+│   ├── Research/
+│   ├── Conversations/
+│   └── Inbox/
 ├── Wiki/
 │   ├── Entities/
-│   │   ├── People/            # Person pages (advisors, prospects, contacts)
-│   │   └── Companies/         # Company pages
-│   ├── Concepts/              # Compiled concept knowledge
-│   ├── Summaries/             # Source summaries
-│   ├── SOPs/                  # Standard operating procedures
-│   └── Compiled/              # Cross-source Q&A answers
-├── Claude Sessions/           # Past AI session summaries
-├── Projects/                  # Project notes + git summaries
-├── Apple Notes/               # Nightly export from Apple Notes
-├── People/                    # Contact records (synced to iCloud Contacts)
+│   │   ├── People/
+│   │   └── Companies/
+│   ├── Concepts/
+│   ├── Summaries/
+│   ├── SOPs/
+│   └── Compiled/
+├── Claude Sessions/
+├── Projects/
+├── Apple Notes/
+├── People/
 └── System/
     └── PKB/
-        └── schema.md          # Templates for all Wiki page types
+        └── schema.md
 ```
 
 ### PKB Scripts
@@ -102,16 +110,11 @@ Brain/
 | Command | What it does |
 |---|---|
 | `python3 ~/.claude/scripts/pkb-process.py` | Process all files in `Brain/Raw/` |
-| `python3 ~/.claude/scripts/pkb-process.py --dry-run` | Preview what would be processed |
-| `python3 ~/.claude/scripts/pkb-process.py --file <path>` | Process a single file |
-| `python3 ~/.claude/scripts/pkb-query.py "question"` | Query across the whole Brain |
-| `python3 ~/.claude/scripts/pkb-query.py "question" --save` | Query + save answer to Wiki |
-| `python3 ~/.claude/scripts/pkb-query.py --interactive` | Interactive Q&A mode |
-
-### Nightly brain-sync (2 AM cron)
-1. Export Apple Notes → `Brain/Apple Notes/`
-2. Run git log summaries for active repos → `Brain/Projects/`
-3. Run `pkb-process.py` on `Brain/Raw/Inbox/`
+| `python3 ~/.claude/scripts/pkb-process.py --dry-run` | Preview processing |
+| `python3 ~/.claude/scripts/pkb-process.py --file <path>` | Process one file |
+| `python3 ~/.claude/scripts/pkb-query.py "question"` | Query across the Brain |
+| `python3 ~/.claude/scripts/pkb-query.py "question" --save` | Query + save answer |
+| `python3 ~/.claude/scripts/pkb-query.py --interactive` | Interactive mode |
 
 ---
 
@@ -123,25 +126,13 @@ Brain/
 | Airbank Mortgage Platform | `/Users/dm3n/Airbank/Airbank Mortgage Platform` | 3004 | Next.js 16 |
 | ROGI | `/Users/dm3n/Projects/rogi` | 3002 | Next.js 16 |
 
-### Folder structure
-
-```
-~/
-├── Airbank/          # All Airbank repos (QoE Platform, Mortgage Platform, Website, Remotion, etc.)
-├── Projects/         # Claude-built side projects (rogi, airbank-lander, VisionClaw, etc.)
-├── lab/              # Homelab repos (macintosh, homelab-setup, homelab-work, setup)
-└── Archive/          # Old/inactive projects
-```
-
 ---
 
 ## Universal Engineering Rules
 
-Apply in every project, every agent, every session:
-
-- Always use **shadcn/ui** for all UI components
-- Do NOT create `middleware.ts` in Next.js 16 — use `proxy.ts`
-- Supabase new key format: `sb_publishable_` / `sb_secret_`
+- Always use **shadcn/ui** for UI components
+- Next.js 16: use `proxy.ts`, not `middleware.ts`
+- Supabase key format: `sb_publishable_` / `sb_secret_`
 - Default Gemini model: `gemini-3`
 - Default Claude model: `claude-sonnet-4-6`
 - Supabase project ID: `qlhdslbpgnctshcpiqfv`
