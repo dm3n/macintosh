@@ -39,6 +39,14 @@ Four AI coding agents installed and configured globally. All share the same cont
 - **Global config**: `~/.gemini/GEMINI.md`
 - **Default model**: `gemini-2.0-flash-001`
 
+### Global Superpowers Standard (All Agents)
+- Superpowers is required at the user/global scope for every coding agent.
+- Codex: repo at `~/.codex/superpowers` + symlink `~/.agents/skills/superpowers -> ~/.codex/superpowers/skills`.
+- Claude Code: plugin marketplace `obra/superpowers-marketplace` + `superpowers@superpowers-marketplace` installed with `--scope user`.
+- Gemini CLI: extension source `https://github.com/obra/superpowers` installed and enabled.
+- OpenCode: plugin `superpowers@git+https://github.com/obra/superpowers.git` in `~/.config/opencode/opencode.json`.
+- Standard update path: `git -C ~/.codex/superpowers pull --ff-only` plus CLI restart.
+
 ---
 
 ## Shared Agent Context

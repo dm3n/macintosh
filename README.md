@@ -154,6 +154,16 @@ The full system has five layers that work together. Every layer feeds every othe
 
 Agent definitions live in `.claude/agents/` inside each project repo.
 
+### Global Agent Superpowers Standard
+
+Superpowers is a required user-level baseline across all coding agents in this system.
+
+- Codex: clone/update at `~/.codex/superpowers` and keep `~/.agents/skills/superpowers -> ~/.codex/superpowers/skills`.
+- Claude Code: `claude plugin marketplace add obra/superpowers-marketplace` and `claude plugin install superpowers@superpowers-marketplace --scope user`.
+- Gemini CLI: `gemini extensions install https://github.com/obra/superpowers`.
+- OpenCode: global plugin `superpowers@git+https://github.com/obra/superpowers.git` in `~/.config/opencode/opencode.json`.
+- Maintenance: `git -C ~/.codex/superpowers pull --ff-only` and restart each CLI.
+
 ### Branch Strategy
 
 ```
