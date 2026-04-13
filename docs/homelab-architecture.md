@@ -1,76 +1,58 @@
 # Homelab Architecture
 
-> Runtime architecture for the Macintosh automation system.
+> Infrastructure-first view of the Macintosh homelab.
 
-## Core Principle
+## Platform First
 
-Agents draft. Humans approve in Linear. Executor delivers.
+Homelab is primarily the server platform:
+- **Proxmox** for virtualization/host management
+- **Casa** for service management and operator UX
+- **Docker** for current container workloads
+- **Kubernetes** as part of the same homelab compute strategy
 
-No agent writes directly to external systems.
+The agent runtime is one workload set running on top of this platform.
 
-## End-to-End Flow
+## Layered Homelab Model
 
 ```text
-Trigger (cron/webhook/manual)
-  -> Orchestrator dispatches runtime job
-  -> Agent generates pending action in Postgres
-  -> Approval Gateway syncs action into Linear approvals workflow
-  -> Human decision in Linear (Approved/Rejected)
-  -> Approval Gateway updates action status
-  -> Executor consumes approved actions
-  -> Delivery result logged to audit trail
+Physical server(s)
+  -> Proxmox virtualization layer
+  -> Casa management layer
+  -> Container orchestration (Docker today, Kubernetes in-platform)
+  -> Workloads (automation services, data services, support services)
 ```
 
-## Compose Service Map
+## Macintosh Automation Workload (Current)
 
-| Compose Service | Purpose | Port/Dependency Notes |
-|---|---|---|
-| `hub-db` | Postgres state store | stores jobs, pending actions, audit logs |
-| `hub-redis` | queue/event bus | pub/sub backbone |
-| `hub-mcp` | integration abstraction | internal service for tool handlers |
-| `hub-orchestrator` | scheduling + dispatch | references `LINEAR_API_KEY`, `LINEAR_TEAM_ID` |
-| `hub-approval` | Linear approval synchronization | references `LINEAR_APPROVAL_PROJECT_ID` |
-| `hub-executor` | approved action delivery | consumes `actions:approved` events |
-| `hub-agent-code` | code-domain agent | scheduled worker |
-| `hub-agent-email` | email-domain agent | scheduled worker |
-| `hub-agent-calendar` | calendar-domain agent | scheduled worker |
-| `hub-agent-linear` | linear-domain agent | scheduled worker |
-| `hub-agent-slack` | slack-domain agent | scheduled worker |
-| `hub-agent-todo` | todo-domain agent | scheduled worker |
+Current workload graph inside the homelab platform:
+- `hub-db` (Postgres)
+- `hub-redis` (queue/event bus)
+- `hub-mcp` (integration abstraction)
+- `hub-orchestrator` (dispatch/scheduling)
+- `hub-approval` (Linear approval sync)
+- `hub-executor` (approved action delivery)
+- domain agents (`code`, `email`, `calendar`, `linear`, `slack`, `todo`)
 
-## Data Backbone
+## Approval and Control
 
-Primary tables in `homelab/database/schema.sql`:
-- `agents`
-- `jobs`
-- `pending_actions`
-- `agent_memory`
-- `audit_log`
-- `morning_reports`
+- system of record for approvals: **Linear**
+- agents produce pending actions only
+- executor delivers only approved actions
+- lifecycle tracked in `pending_actions` and `audit_log`
 
-Action statuses:
+Action status model:
 
 ```text
 pending -> approved/rejected -> delivered/failed
 ```
 
-## Approval Model (Current)
+## Data and Security
 
-- Approval system of record: **Linear**
-- Approval Gateway maps Linear decisions to `pending_actions.status`
-- Executor processes only `approved` actions
-
-Required approval env keys:
-- `LINEAR_API_KEY`
-- `LINEAR_TEAM_ID`
-- `LINEAR_APPROVAL_PROJECT_ID`
-
-## Security and Control
-
-- secrets live in `homelab/.env`
-- internal service networking only (`hub` bridge network)
-- no direct external writes from agents
-- full audit trail for every action lifecycle transition
+- state in Postgres (`homelab/database/schema.sql`)
+- queue/event signaling in Redis
+- secrets in `homelab/.env` only
+- no direct external writes from agent workers
+- internal Docker network isolation for runtime services
 
 ## Deploy / Operate
 
@@ -82,5 +64,5 @@ Required approval env keys:
 ./homelab/scripts/ssh-tunnel.sh <node-ip>
 ```
 
-Compose root on remote host:
+Remote compose root:
 - `/opt/agenthub/homelab`

@@ -1,6 +1,11 @@
-# Homelab Runtime
+# Homelab Platform
 
-This directory contains the runtime stack for Macintosh automation.
+Homelab is the infrastructure layer for Macintosh:
+- Proxmox server/cluster foundation
+- Casa for service operations
+- Docker + Kubernetes workload hosting
+
+This directory contains the Macintosh automation workload currently running on that platform.
 
 ## Files
 
@@ -10,7 +15,7 @@ This directory contains the runtime stack for Macintosh automation.
 - `scripts/deploy.sh` — remote deployment helper
 - `scripts/ssh-tunnel.sh` — local debugging tunnels
 
-## Approval System
+## Approval System (Automation Workload)
 
 Approvals are Linear-based.
 

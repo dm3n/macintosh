@@ -13,7 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/dm3n/macintosh/main/scripts/install
 ## What This Repo Covers
 
 - reproducible install/bootstrap/validation
-- homelab runtime stack (compose + schema + service scaffolds)
+- homelab platform stack (Proxmox + Casa + Docker + Kubernetes)
 - linear-based approval model for all agent actions
 - persistent PKB architecture and workflows
 - team/system docs as source of truth
@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/dm3n/macintosh/main/scripts/install
 |---|---|---|
 | **1. Build Layer** | Converts scoped work into reviewed, deployable changes | [docs/development-workflow.md](docs/development-workflow.md), [docs/dev-environment.md](docs/dev-environment.md) |
 | **2. Knowledge Layer (PKB)** | Turns raw inputs into reusable long-term memory | [docs/knowledge-brain.md](docs/knowledge-brain.md) |
-| **3. Execution Layer (Homelab)** | Runs orchestrator, agents, queues, and delivery services | [docs/homelab-architecture.md](docs/homelab-architecture.md), [docs/setup.md](docs/setup.md), [docs/install.md](docs/install.md) |
+| **3. Execution Layer (Homelab)** | Runs platform infrastructure (Proxmox/Casa/Docker/K8s) and automation workloads | [docs/homelab-architecture.md](docs/homelab-architecture.md), [docs/setup.md](docs/setup.md), [docs/install.md](docs/install.md) |
 | **4. Approval Layer** | Enforces human approval in Linear before external writes | [docs/approval-flow.md](docs/approval-flow.md) |
 | **5. Coordination Layer** | Aligns priorities and communication across tools | [docs/team-communication.md](docs/team-communication.md), [docs/agents.md](docs/agents.md) |
 
@@ -53,11 +53,9 @@ The PKB is the memory backbone:
 
 ## Runtime Architecture (Current)
 
-- **Orchestrator**: schedules and dispatches jobs
-- **MCP Gateway**: integration abstraction layer
-- **Approval Gateway**: Linear approval synchronization
-- **Executor**: executes only approved actions
-- **Agents**: code, email, calendar, linear, slack, todo
+- **Platform**: Proxmox host/cluster managed through Casa
+- **Compute**: Docker workloads today, Kubernetes workloads as part of the same homelab platform
+- **Automation Workloads**: orchestrator, mcp gateway, approval gateway, executor, domain agents
 - **State**: Postgres + Redis
 
 ## Quick Start
