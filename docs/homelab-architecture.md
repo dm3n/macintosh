@@ -11,6 +11,7 @@ Homelab is primarily the server platform:
 - **Kubernetes** as part of the same homelab compute strategy
 
 The agent runtime is one workload set running on top of this platform.
+Kali is a first-class VM node in this platform for AI repository and cybersecurity operations.
 
 ## Layered Homelab Model
 
@@ -25,6 +26,7 @@ Physical server(s)
 ## Macintosh Automation Workload (Current)
 
 Current workload graph inside the homelab platform:
+- `kali` VM (AI repository + cybersecurity node)
 - `hub-db` (Postgres)
 - `hub-redis` (queue/event bus)
 - `hub-mcp` (integration abstraction)

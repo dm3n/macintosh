@@ -21,6 +21,7 @@ Complete catalogue of every tool in the personal and company stack, organised by
 | Tool | Role | Why |
 |------|------|-----|
 | **Superset + Zsh** | Terminal | Fast shell workflow with persistent sessions and split panes |
+| **Warp** | General terminal | Secondary shell surface for non-coding operations and everyday terminal work |
 | **GitHub** | Version control + code hosting | All repos — private (Airbank products) and public (open source) |
 | **Vercel** | Deployment | Zero-config Next.js deploys, preview URLs per PR, edge network |
 | **Linear** | Project management | Dev sprints, issue tracking, GitHub PR integration, roadmap |
@@ -90,6 +91,7 @@ Every project uses shadcn/ui for all UI components — no exceptions.
 | **Proxmox** | Bare-metal hypervisor | 2-node home server cluster running all self-hosted services |
 | **Docker** | Containerisation | All homelab services and AI agents in containers |
 | **Tailscale** | VPN mesh | Zero-config secure access to homelab from any device, anywhere |
+| **Kali VM Node** | AI repository + cybersecurity | Dedicated Linux node in Proxmox for model/runtime tooling and security operations via `ssh kali` |
 
 ---
 

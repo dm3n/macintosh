@@ -7,7 +7,8 @@ Single source of truth for the local dev pipeline, coding agents, and knowledge 
 
 ## Terminal
 
-**Superset + Zsh** — primary terminal.
+- **Superset + Zsh** — coding-first terminal environment for implementation sessions
+- **Warp** — general-purpose terminal for broader shell/ops workflows
 
 ---
 

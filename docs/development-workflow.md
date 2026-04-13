@@ -59,4 +59,4 @@ cd "/Users/dm3n/Projects/rogi"
 npm run dev -- --port 3002
 ```
 
-Terminal baseline: Superset + Zsh.
+Terminal baseline: Superset + Zsh for coding; Warp for general terminal workflows.

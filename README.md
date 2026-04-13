@@ -28,6 +28,14 @@ curl -fsSL https://raw.githubusercontent.com/dm3n/macintosh/main/scripts/install
 | **4. Approval Layer** | Enforces human approval in Linear before external writes | [docs/approval-flow.md](docs/approval-flow.md) |
 | **5. Coordination Layer** | Aligns priorities and communication across tools | [docs/team-communication.md](docs/team-communication.md), [docs/agents.md](docs/agents.md) |
 
+## Bird's-Eye + Deep Dives
+
+- [docs/system-birdseye.md](docs/system-birdseye.md) - product-level narrative and architecture map
+- [docs/local-development-system.md](docs/local-development-system.md) - local Mac development and agent system
+- [docs/personal-cloud-cluster.md](docs/personal-cloud-cluster.md) - Proxmox cluster and workload model
+- [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md) - Kali VM role and operating contract
+- [docs/operator-workflows.md](docs/operator-workflows.md) - day-to-day workflows across all layers
+
 ## System Flow
 
 ```text
@@ -118,6 +126,11 @@ docker compose up -d --build
 
 ## Docs Index
 
+- [docs/system-birdseye.md](docs/system-birdseye.md)
+- [docs/local-development-system.md](docs/local-development-system.md)
+- [docs/personal-cloud-cluster.md](docs/personal-cloud-cluster.md)
+- [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md)
+- [docs/operator-workflows.md](docs/operator-workflows.md)
 - [docs/install.md](docs/install.md)
 - [docs/setup.md](docs/setup.md)
 - [docs/homelab-architecture.md](docs/homelab-architecture.md)
