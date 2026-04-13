@@ -1,57 +1,86 @@
 # Homelab Architecture
 
-> Part of [dm3n/macintosh](https://github.com/dm3n/macintosh)
+> Runtime architecture for the Macintosh automation system.
 
 ## Core Principle
 
-Every agent is a drafter, not a doer.
-Agents create pending actions; execution only happens after approval in **Linear**.
+Agents draft. Humans approve in Linear. Executor delivers.
 
-## Runtime Data Flow
+No agent writes directly to external systems.
+
+## End-to-End Flow
 
 ```text
-External trigger (cron/webhook/manual)
-  -> Orchestrator decides agent dispatch
-  -> Agent produces pending action in Postgres
-  -> Approval Gateway syncs pending action to Linear
-  -> Human approves/rejects in Linear
-  -> Executor consumes approved action
-  -> Delivery status and audit log recorded
+Trigger (cron/webhook/manual)
+  -> Orchestrator dispatches runtime job
+  -> Agent generates pending action in Postgres
+  -> Approval Gateway syncs action into Linear approvals workflow
+  -> Human decision in Linear (Approved/Rejected)
+  -> Approval Gateway updates action status
+  -> Executor consumes approved actions
+  -> Delivery result logged to audit trail
 ```
 
-## Services
+## Compose Service Map
 
-- Orchestrator: schedules and dispatches work
-- MCP Gateway: integration tool abstraction
-- Approval Gateway: syncs pending actions with Linear approval states
-- Executor: delivers approved actions
-- Agents: code/email/calendar/linear/slack/todo
-- Postgres + Redis: queue/state/audit backbone
+| Compose Service | Purpose | Port/Dependency Notes |
+|---|---|---|
+| `hub-db` | Postgres state store | stores jobs, pending actions, audit logs |
+| `hub-redis` | queue/event bus | pub/sub backbone |
+| `hub-mcp` | integration abstraction | internal service for tool handlers |
+| `hub-orchestrator` | scheduling + dispatch | references `LINEAR_API_KEY`, `LINEAR_TEAM_ID` |
+| `hub-approval` | Linear approval synchronization | references `LINEAR_APPROVAL_PROJECT_ID` |
+| `hub-executor` | approved action delivery | consumes `actions:approved` events |
+| `hub-agent-code` | code-domain agent | scheduled worker |
+| `hub-agent-email` | email-domain agent | scheduled worker |
+| `hub-agent-calendar` | calendar-domain agent | scheduled worker |
+| `hub-agent-linear` | linear-domain agent | scheduled worker |
+| `hub-agent-slack` | slack-domain agent | scheduled worker |
+| `hub-agent-todo` | todo-domain agent | scheduled worker |
 
-## Approval States
+## Data Backbone
 
-```sql
-pending   -> waiting for decision
-approved  -> execution allowed
-rejected  -> discarded
-delivered -> executor completed
-failed    -> executor attempted and failed
+Primary tables in `homelab/database/schema.sql`:
+- `agents`
+- `jobs`
+- `pending_actions`
+- `agent_memory`
+- `audit_log`
+- `morning_reports`
+
+Action statuses:
+
+```text
+pending -> approved/rejected -> delivered/failed
 ```
 
-## Security Model
+## Approval Model (Current)
 
-- secrets in `.env` only
-- no direct agent writes to external systems
-- executor-only delivery path
-- audited status transitions for every action
-- private infrastructure access via SSH/Tailscale
+- Approval system of record: **Linear**
+- Approval Gateway maps Linear decisions to `pending_actions.status`
+- Executor processes only `approved` actions
 
-## Deployment
+Required approval env keys:
+- `LINEAR_API_KEY`
+- `LINEAR_TEAM_ID`
+- `LINEAR_APPROVAL_PROJECT_ID`
+
+## Security and Control
+
+- secrets live in `homelab/.env`
+- internal service networking only (`hub` bridge network)
+- no direct external writes from agents
+- full audit trail for every action lifecycle transition
+
+## Deploy / Operate
 
 ```bash
-# Deploy to primary node
+# from repo root
 ./homelab/scripts/deploy.sh <node-ip>
 
-# SSH tunnel for debug
+# debug tunnels
 ./homelab/scripts/ssh-tunnel.sh <node-ip>
 ```
+
+Compose root on remote host:
+- `/opt/agenthub/homelab`
