@@ -1,8 +1,8 @@
 # Macintosh
 
-Personal AI operating system for building software, compounding knowledge, and running approval-safe automation.
+Macintosh is a personal AI operating system for shipping software, compounding knowledge, and running approval-safe automation across local and homelab infrastructure.
 
-Macintosh is the operating model behind Airbank. It combines product development, persistent memory, automation runtime, and team coordination into one coherent system.
+It is the operating model behind Airbank: one coherent system spanning local development, persistent memory, private cloud execution, and controlled delivery.
 
 ## Install
 
@@ -10,61 +10,93 @@ Macintosh is the operating model behind Airbank. It combines product development
 curl -fsSL https://raw.githubusercontent.com/dm3n/macintosh/main/scripts/install.sh | bash
 ```
 
-## What This Repo Covers
+## What This Repository Is
 
-- reproducible install/bootstrap/validation
-- homelab platform stack (Proxmox + Casa + Docker + Kubernetes)
-- linear-based approval model for all agent actions
-- persistent PKB architecture and workflows
-- team/system docs as source of truth
+This repo is the source of truth for:
+- local development and agent standards
+- PKB/Brain architecture and workflows
+- personal cloud and homelab runtime design
+- approval-gated automation model
+- setup, operation, and expansion documentation
 
-## 5-Layer System
-
-| Layer | What It Does | Deep-Dive Docs |
-|---|---|---|
-| **1. Build Layer** | Converts scoped work into reviewed, deployable changes | [docs/development-workflow.md](docs/development-workflow.md), [docs/dev-environment.md](docs/dev-environment.md) |
-| **2. Knowledge Layer (PKB)** | Turns raw inputs into reusable long-term memory | [docs/knowledge-brain.md](docs/knowledge-brain.md) |
-| **3. Execution Layer (Homelab)** | Runs platform infrastructure (Proxmox/Casa/Docker/K8s) and automation workloads | [docs/homelab-architecture.md](docs/homelab-architecture.md), [docs/setup.md](docs/setup.md), [docs/install.md](docs/install.md) |
-| **4. Approval Layer** | Enforces human approval in Linear before external writes | [docs/approval-flow.md](docs/approval-flow.md) |
-| **5. Coordination Layer** | Aligns priorities and communication across tools | [docs/team-communication.md](docs/team-communication.md), [docs/agents.md](docs/agents.md) |
-
-## Bird's-Eye + Deep Dives
-
-- [docs/system-birdseye.md](docs/system-birdseye.md) - product-level narrative and architecture map
-- [docs/local-development-system.md](docs/local-development-system.md) - local Mac development and agent system
-- [docs/personal-cloud-cluster.md](docs/personal-cloud-cluster.md) - Proxmox cluster and workload model
-- [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md) - Kali VM role and operating contract
-- [docs/operator-workflows.md](docs/operator-workflows.md) - day-to-day workflows across all layers
-
-## System Flow
+## System At A Glance
 
 ```text
-Spec / Signal
-  -> Build Layer creates or updates implementation
-  -> Agents draft actions and findings
-  -> Pending actions are synced to Linear approvals
-  -> Approved actions are executed by Executor
-  -> Outcomes are logged and fed into PKB
+Mac (Local Operator Layer)
+  -> Superset terminal for coding
+  -> Warp terminal for general terminal workflows
+  -> Codex / Claude / Gemini / OpenCode
+  -> PKB + Brain context and memory loop
+  -> Tailscale secure mesh
+
+Personal Cloud 2 (Infrastructure Layer)
+  -> Proxmox cluster resource pool
+  -> Kali VM (AI Repository + Cybersecurity node)
+  -> Agent Hub runtime services
+     -> orchestrator / approval / executor / mcp / domain agents
+     -> Postgres + Redis
+
+Control Layer
+  -> Linear approval gate before external actions
 ```
 
-## PKB Visual
+## Visual Tour
 
-<p align="center">
-  <img src="assets/brain-graph.png" alt="Macintosh PKB graph view" width="85%" />
-</p>
+### 1) Knowledge Layer (PKB Graph)
 
-The PKB is the memory backbone:
-- ingest raw material from notes, sessions, research, and conversations
-- compile into linked wiki entities/concepts/summaries/SOPs
-- query across accumulated context
-- feed validated output back into future sessions
+![PKB Graph View](assets/screenshots/pkb-graph-view-2026-04-13.png)
+
+The Brain vault is the persistent knowledge engine that compounds across sessions, projects, and agents.
+
+### 2) Infrastructure Layer (Proxmox + Kali Provisioning)
+
+![Proxmox Kali Install](assets/screenshots/proxmox-kali-install-2026-04-13.png)
+
+Proxmox hosts the personal cloud cluster where Kali and runtime services run as first-class infrastructure workloads.
+
+### 3) Local Development Layer (Superset Coding Workspace)
+
+![Superset Coding Workspace](assets/screenshots/superset-coding-workspace-2026-04-13.png)
+
+Superset is the implementation-first coding surface for daily agent-driven development.
+
+## 5-Layer Operating Model
+
+| Layer | Function | Primary Docs |
+|---|---|---|
+| Build | Converts scoped work into tested, deployable output | [docs/development-workflow.md](docs/development-workflow.md), [docs/dev-environment.md](docs/dev-environment.md), [docs/local-development-system.md](docs/local-development-system.md) |
+| Knowledge (PKB) | Converts raw input into reusable long-term memory | [docs/knowledge-brain.md](docs/knowledge-brain.md) |
+| Execution (Homelab) | Runs infrastructure and automation workloads | [docs/homelab-architecture.md](docs/homelab-architecture.md), [docs/personal-cloud-cluster.md](docs/personal-cloud-cluster.md), [docs/setup.md](docs/setup.md) |
+| Approval | Enforces human review before external delivery | [docs/approval-flow.md](docs/approval-flow.md) |
+| Coordination | Aligns priorities, ownership, and communication | [docs/team-communication.md](docs/team-communication.md), [docs/agents.md](docs/agents.md), [docs/operator-workflows.md](docs/operator-workflows.md) |
 
 ## Runtime Architecture (Current)
 
-- **Platform**: Proxmox host/cluster managed through Casa
-- **Compute**: Docker workloads today, Kubernetes workloads as part of the same homelab platform
-- **Automation Workloads**: orchestrator, mcp gateway, approval gateway, executor, domain agents
-- **State**: Postgres + Redis
+Platform:
+- Proxmox + Casa as server management foundation
+- Docker workloads now, Kubernetes as part of the same platform strategy
+
+Core workloads:
+- `kali` VM: AI repository and cybersecurity node
+- Agent Hub services: orchestrator, approval gateway, executor, MCP gateway, domain agents
+- State services: Postgres + Redis
+
+Control model:
+- agents produce pending actions
+- approval decisions happen in Linear
+- executor delivers approved actions only
+- audit trail is persisted for lifecycle transparency
+
+## Kali Node Contract
+
+Kali is a first-class Macintosh node for Linux-side AI and security operations.
+
+Expected operator experience:
+1. Open terminal (Superset or Warp).
+2. Run `ssh kali`.
+3. Land in Kali shell and operate immediately.
+
+Reference: [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md)
 
 ## Quick Start
 
@@ -74,7 +106,7 @@ cd ~/lab/homelab-macintosh
 ./scripts/bootstrap.sh
 ```
 
-Bring homelab up:
+Bring homelab runtime up:
 
 ```bash
 cd homelab
@@ -83,11 +115,12 @@ cp -n .env.example .env
 docker compose up -d --build
 ```
 
-## Repository Layout
+## Repository Structure
 
 ```text
 .
-├── assets/                         # images used in docs/readme
+├── assets/                         # readme/doc visuals
+│   └── screenshots/                # current architecture screenshots
 ├── docs/                           # system documentation
 ├── homelab/
 │   ├── docker-compose.yml          # runtime stack definition
@@ -108,39 +141,45 @@ docker compose up -d --build
     └── lib/
 ```
 
-## Standards
+## Engineering Standards
 
-- `shadcn/ui` for UI work
+- Use `shadcn/ui` for UI work
 - Next.js 16 uses `proxy.ts` (not `middleware.ts`)
 - Supabase key format: `sb_publishable_` / `sb_secret_`
-- default Gemini family: **Gemini 3**
-- default Claude model: `claude-sonnet-4-6`
+- Default Gemini family: `gemini-3`
+- Default Claude model: `claude-sonnet-4-6`
 
-## Security Model
+## Security + Delivery Boundaries
 
-- agents draft, they do not execute external writes directly
-- approval decision happens in Linear
-- executor runs only approved actions
-- full audit trail on action lifecycle
+- agents draft actions; they do not directly execute external writes
+- approval is required in Linear
+- executor handles delivery only after approval
 - secrets stay in `.env` and are never committed
 
-## Docs Index
+## Documentation Index
 
+Bird's-eye and product narrative:
 - [docs/system-birdseye.md](docs/system-birdseye.md)
-- [docs/local-development-system.md](docs/local-development-system.md)
-- [docs/personal-cloud-cluster.md](docs/personal-cloud-cluster.md)
-- [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md)
 - [docs/operator-workflows.md](docs/operator-workflows.md)
+
+Local development and agents:
+- [docs/dev-environment.md](docs/dev-environment.md)
+- [docs/local-development-system.md](docs/local-development-system.md)
+- [docs/development-workflow.md](docs/development-workflow.md)
+- [docs/agents.md](docs/agents.md)
+- [docs/superpowers.md](docs/superpowers.md)
+
+Infrastructure and execution:
+- [docs/personal-cloud-cluster.md](docs/personal-cloud-cluster.md)
+- [docs/homelab-architecture.md](docs/homelab-architecture.md)
+- [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md)
 - [docs/install.md](docs/install.md)
 - [docs/setup.md](docs/setup.md)
-- [docs/homelab-architecture.md](docs/homelab-architecture.md)
-- [docs/approval-flow.md](docs/approval-flow.md)
-- [docs/development-workflow.md](docs/development-workflow.md)
-- [docs/dev-environment.md](docs/dev-environment.md)
+
+Knowledge and operating system context:
 - [docs/knowledge-brain.md](docs/knowledge-brain.md)
 - [docs/tech-stack.md](docs/tech-stack.md)
 - [docs/team-communication.md](docs/team-communication.md)
-- [docs/airbank-stack.md](docs/airbank-stack.md)
 - [docs/repository-roadmap.md](docs/repository-roadmap.md)
 
 ## Contributing
