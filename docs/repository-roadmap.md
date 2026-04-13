@@ -1,41 +1,30 @@
 # Repository Roadmap
 
-High-level implementation roadmap to evolve Macintosh into a complete open-source runtime.
+## Phase 1: Foundation (Done)
 
-## Phase 1: Foundations (Current)
-
-- architecture and operations docs
 - install/bootstrap/validation scripts
-- homelab compose skeleton + database schema
-- service contracts for all runtime components
+- runnable service scaffolds for all compose services
+- coherent docs and architecture baseline
 
-## Phase 2: Core Runtime
+## Phase 2: Approval + Delivery Hardening
 
-- implement orchestrator service
-- implement pending action API and queue workers
-- implement Telegram approval bot
-- implement executor delivery handlers
-- integrate MCP gateway draft tools
+- Linear-native approval synchronization
+- stronger executor idempotency and retries
+- richer audit metadata
 
-## Phase 3: Agent Implementations
+## Phase 3: Integration Depth
 
-- code agent
-- email agent
-- calendar agent
-- linear agent
-- slack agent
-- todo agent
+- GitHub, Gmail, Calendar, Tasks, Linear, Slack handlers
+- better failure semantics and dead-letter handling
 
-## Phase 4: Production Hardening
+## Phase 4: Reliability
 
-- full observability (metrics, traces, structured logs)
-- retries, idempotency, dead-letter queues
-- backup/restore + disaster recovery playbook
-- end-to-end test suite and synthetic monitoring
+- end-to-end integration tests
+- observability (metrics/log traces)
+- backup and restore runbooks
 
-## Phase 5: Open-Source Productization
+## Phase 5: Productized OSS Experience
 
-- contributor starter kits per service
-- reference deployment templates
-- versioned releases + changelog discipline
-- architecture decision records (ADRs)
+- versioned releases and changelog discipline
+- contributor guides per service
+- deployment profiles (local/lab/cloud)

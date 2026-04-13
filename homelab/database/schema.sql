@@ -49,12 +49,12 @@ CREATE TABLE IF NOT EXISTS pending_actions (
   action_type   TEXT NOT NULL,
   -- 'github_pr' | 'send_email' | 'create_event' | 'update_event'
   -- 'create_task' | 'update_task' | 'draft_note'
-  summary       TEXT NOT NULL,   -- 1-2 sentence description for Telegram
+  summary       TEXT NOT NULL,   -- 1-2 sentence description for Linear approval
   full_output   TEXT NOT NULL,   -- Full agent output shown on "View"
   payload       JSONB NOT NULL,  -- Executor uses this to deliver
   status        TEXT NOT NULL DEFAULT 'pending',
   -- 'pending' | 'approved' | 'rejected' | 'delivered' | 'failed'
-  telegram_message_id BIGINT,    -- For editing/deleting the approval message
+  approval_ref_id BIGINT,    -- Reference for external approval object
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   decided_at    TIMESTAMPTZ,
   delivered_at  TIMESTAMPTZ,

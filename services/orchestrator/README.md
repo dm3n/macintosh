@@ -1,22 +1,20 @@
 # Orchestrator Service Contract
 
 Role:
-- central router for agent jobs
-- queue scheduler
-- morning report generator
+- central dispatcher and scheduler
+- aggregate queue state and runtime health
 
 Required interfaces:
-- ingest manual commands
-- enqueue jobs to Redis
-- read pending actions from Postgres
-- publish approval notifications via Telegram bot
+- ingest cron/webhook/manual triggers
+- dispatch jobs to agent workers
+- aggregate pending action state for reports
+- notify Approval Gateway when new actions are created
 
 Inputs:
 - cron triggers
 - webhook events
-- Telegram commands
+- manual run requests
 
 Outputs:
 - queued jobs
-- morning report payloads
-- approval queue summaries
+- summary/report payloads

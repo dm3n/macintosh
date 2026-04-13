@@ -1,18 +1,10 @@
 # Install Guide
 
-This guide covers local install and homelab deployment for Macintosh.
-
 ## Option A: One-Command Install (Recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dm3n/macintosh/main/scripts/install.sh | bash
 ```
-
-What this does:
-- clones or updates `dm3n/macintosh`
-- runs bootstrap
-- creates `homelab/.env` from template if missing
-- runs repository validation checks
 
 ## Option B: Manual Install
 
@@ -22,48 +14,39 @@ cd ~/lab/homelab-macintosh
 ./scripts/bootstrap.sh
 ```
 
-## Configure Environment
+## Configure Runtime
 
 ```bash
 cd ~/lab/homelab-macintosh/homelab
 cp -n .env.example .env
 ```
 
-Populate `.env` with real values:
+Set required credentials:
 - `ANTHROPIC_API_KEY`
 - `GEMINI_MODEL` (default `gemini-3`)
-- database credentials
-- Telegram bot credentials
-- integration API keys (GitHub/Google/Linear/Slack)
+- DB credentials
+- GitHub token
+- Google OAuth credentials
+- Linear credentials for approvals
 
-## Homelab Deployment
-
-From local machine:
+## Deploy
 
 ```bash
 cd ~/lab/homelab-macintosh
 ./homelab/scripts/deploy.sh <node-ip>
 ```
 
-On remote host, compose runs from:
+Compose root on server:
 - `/opt/agenthub/homelab`
 
-## Validation
+## Validate
 
 ```bash
-cd ~/lab/homelab-macintosh
 make validate
 ```
 
-## Current Runtime Scope
+## Runtime Scope
 
-`services/` now includes runnable scaffold implementations for every compose-defined service.
-Current focus:
-- working baseline runtime
-- explicit service contracts
-- approval queue and audit schema integration
-
-Still pending for full production readiness:
-- deep external API integration handlers
-- hardened retry/idempotency policies per action type
-- end-to-end integration test suite
+- all compose-defined services have runnable scaffolds
+- approval path is Linear-driven
+- integration handlers are still being hardened incrementally

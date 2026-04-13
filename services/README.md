@@ -1,23 +1,20 @@
 # Services
 
-This directory defines the runtime service boundaries for the Macintosh homelab system.
+Runtime services for Macintosh homelab.
 
 Current state:
-- Interfaces and architecture are documented.
-- Runnable scaffold implementations are committed for every compose-defined service.
-- Production integration handlers are intentionally incremental.
+- runnable scaffolds are implemented for all compose-defined services
+- service contracts are documented
+- integration logic is iterative
 
-Each service directory must at minimum contain:
-- `README.md` with ownership, responsibilities, and API contract.
-
-Planned services:
+Service list:
 - `orchestrator`
 - `mcp-gateway`
-- `telegram-bot`
+- `approval-gateway`
 - `executor`
 - `agents/code`
 - `agents/email`
 - `agents/calendar`
+- `agents/linear`
+- `agents/slack`
 - `agents/todo`
-- `agents/linear` (compose-defined)
-- `agents/slack` (compose-defined)

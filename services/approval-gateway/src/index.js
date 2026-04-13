@@ -3,7 +3,7 @@ const { createApp, listen } = require('../../lib/http');
 const { createDb, query } = require('../../lib/db');
 const { createRedis } = require('../../lib/redis');
 
-const SERVICE = 'telegram-bot';
+const SERVICE = 'approval-gateway';
 const PORT = Number(process.env.PORT || 3002);
 
 const logger = createLogger(SERVICE);
@@ -31,13 +31,11 @@ async function setActionStatus(actionId, status) {
     await redis.publish('actions:approved', JSON.stringify({ actionId: row.id }));
   }
 
-  if (db) {
-    await query(
-      db,
-      'INSERT INTO audit_log (action_id, event, metadata) VALUES ($1, $2, $3)',
-      [row.id, status === 'approved' ? 'action_approved' : 'action_rejected', { via: 'telegram-api' }]
-    );
-  }
+  await query(
+    db,
+    'INSERT INTO audit_log (action_id, event, metadata) VALUES ($1, $2, $3)',
+    [row.id, status === 'approved' ? 'action_approved' : 'action_rejected', { via: 'linear-approval' }]
+  );
 
   return row;
 }

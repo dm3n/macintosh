@@ -1,8 +1,6 @@
 version: "3.9"
 
-# Airbank Agent Hub — Full Stack
-# Deploy: docker compose up -d
-# Logs:   docker compose logs -f [service]
+# Macintosh Homelab Stack
 
 networks:
   hub:
@@ -13,9 +11,6 @@ volumes:
   redis_data:
 
 services:
-
-  # ─── Infrastructure ──────────────────────────────────────────────────────────
-
   hub-db:
     image: postgres:16-alpine
     container_name: hub-db
@@ -50,8 +45,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ─── MCP Gateway ─────────────────────────────────────────────────────────────
-
   hub-mcp:
     build:
       context: ..
@@ -75,8 +68,6 @@ services:
       hub-db:
         condition: service_healthy
 
-  # ─── Orchestrator ─────────────────────────────────────────────────────────────
-
   hub-orchestrator:
     build:
       context: ..
@@ -91,8 +82,8 @@ services:
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID}
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      LINEAR_TEAM_ID: ${LINEAR_TEAM_ID}
       MORNING_REPORT_CRON: "0 7 * * *"
     networks:
       - hub
@@ -104,29 +95,26 @@ services:
       hub-mcp:
         condition: service_started
 
-  # ─── Telegram Bot ─────────────────────────────────────────────────────────────
-
-  hub-telegram:
+  hub-approval:
     build:
       context: ..
       dockerfile: services/Dockerfile
       args:
-        SERVICE: telegram-bot
-    container_name: hub-telegram
+        SERVICE: approval-gateway
+    container_name: hub-approval
     restart: unless-stopped
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID}
       REDIS_URL: redis://hub-redis:6379
       DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@hub-db:5432/agenthub
       ORCHESTRATOR_URL: http://hub-orchestrator:3000
+      LINEAR_API_KEY: ${LINEAR_API_KEY}
+      LINEAR_TEAM_ID: ${LINEAR_TEAM_ID}
+      LINEAR_APPROVAL_PROJECT_ID: ${LINEAR_APPROVAL_PROJECT_ID}
     networks:
       - hub
     depends_on:
       - hub-orchestrator
       - hub-redis
-
-  # ─── Executor ─────────────────────────────────────────────────────────────────
 
   hub-executor:
     build:
@@ -155,8 +143,6 @@ services:
       hub-redis:
         condition: service_healthy
 
-  # ─── Agents ──────────────────────────────────────────────────────────────────
-
   hub-agent-code:
     build:
       context: ..
@@ -172,7 +158,7 @@ services:
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
       GITHUB_TOKEN: ${GITHUB_TOKEN}
-      TARGET_REPOS: ${CODE_TARGET_REPOS}   # dm3n/airbank,dm3n/airbank-lander,dm3n/macintosh
+      TARGET_REPOS: ${CODE_TARGET_REPOS}
       AGENT_SCHEDULE: "0 */4 * * *"
     networks:
       - hub
@@ -239,7 +225,7 @@ services:
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
       LINEAR_API_KEY: ${LINEAR_API_KEY}
-      LINEAR_TEAM_ID: ${LINEAR_TEAM_ID}    # Airbank HQ team
+      LINEAR_TEAM_ID: ${LINEAR_TEAM_ID}
       AGENT_SCHEDULE: "0 */2 * * *"
     networks:
       - hub
@@ -262,7 +248,7 @@ services:
       REDIS_URL: redis://hub-redis:6379
       MCP_URL: http://hub-mcp:3001
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
-      SLACK_CHANNELS: ${SLACK_CHANNELS}    # dev,customers,general
+      SLACK_CHANNELS: ${SLACK_CHANNELS}
       AGENT_SCHEDULE: "0 * * * *"
     networks:
       - hub

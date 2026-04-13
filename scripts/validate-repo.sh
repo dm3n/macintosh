@@ -46,10 +46,15 @@ if ! rg -n "Gemini 3|gemini-3" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" >/dev/null
 fi
 pass "Gemini 3 is documented"
 
+if rg -n "telegram|Telegram|TELEGRAM" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" "$ROOT_DIR/homelab" "$ROOT_DIR/services" >/dev/null; then
+  fail "Found stale Telegram references; approval flow must be Linear-based."
+fi
+pass "No stale Telegram references"
+
 service_dirs=(
   "$ROOT_DIR/services/orchestrator"
   "$ROOT_DIR/services/mcp-gateway"
-  "$ROOT_DIR/services/telegram-bot"
+  "$ROOT_DIR/services/approval-gateway"
   "$ROOT_DIR/services/executor"
   "$ROOT_DIR/services/agents/code"
   "$ROOT_DIR/services/agents/email"
@@ -68,7 +73,7 @@ pass "Service directory structure exists"
 service_entries=(
   "$ROOT_DIR/services/orchestrator/src/index.js"
   "$ROOT_DIR/services/mcp-gateway/src/index.js"
-  "$ROOT_DIR/services/telegram-bot/src/index.js"
+  "$ROOT_DIR/services/approval-gateway/src/index.js"
   "$ROOT_DIR/services/executor/src/index.js"
   "$ROOT_DIR/services/agents/code/src/index.js"
   "$ROOT_DIR/services/agents/email/src/index.js"

@@ -1,84 +1,43 @@
 # Approval Flow
 
-## The Rule
+## Rule
 
-**No agent writes, sends, schedules, or merges anything without your approval.**
+No agent sends, schedules, writes, or updates external systems without explicit approval.
 
-Agents have read access to everything. Write access belongs exclusively to the Executor, which only runs after you tap Approve.
+All approvals are managed in **Linear**.
 
----
+## Approval Interface (Linear)
 
-## Approval Interface
+Agents create approval records as pending actions in Postgres.
+The approval gateway syncs each pending action to Linear as an issue in the approvals project/team.
 
-All approvals happen in Telegram.
+Suggested Linear issue template:
+- Title: `[Approval] <action summary>`
+- Labels: `approval`, `<agent>`, `<action-type>`
+- Body sections:
+  - Context
+  - Proposed action payload
+  - Risk notes
+  - Rollback strategy
 
-### Batched (default for morning report)
-
-```
-🤖 Email Agent — 3 draft replies ready
-
-1. Re: Q1 investor update → Sarah Chen
-2. Re: Partnership intro → Marcus (Stripe)
-3. FWD: Legal docs → your lawyer
-
-[✅ Approve All]  [❌ Reject All]  [👁 Review Each]
-```
-
-### Individual review
-
-```
-Draft reply #1
-
-To: Sarah Chen
-Subject: Re: Q1 investor update
-
----
-Hi Sarah,
-
-Thanks for checking in. The Q1 numbers are looking strong —
-ARR up 40% QoQ. Happy to jump on a call this week to walk
-through the details. Does Thursday 3pm work?
-
-Best,
-Daniel
----
-
-[✅ Send]  [❌ Reject]  [✏️ Edit]  [⏭ Next]
-```
-
-### Code PRs
-
-For code changes, the agent opens a real GitHub PR. You review it normally in GitHub and merge when ready. The Telegram message just links to it:
-
-```
-🧑‍💻 Code Agent — PR ready for review
-
-Fix: Cell PATCH validation bug
-Branch: fix/cell-patch-validation
-
-View on GitHub → github.com/dm3n/qoe-platform/pull/42
-
-[❌ Close PR]
-```
-
----
+Decision mapping:
+- Linear status `Approved` -> pending action becomes `approved`
+- Linear status `Rejected` -> pending action becomes `rejected`
 
 ## Action Types
 
-| Action | How approval works | Who delivers |
+| Action | Approval medium | Delivery |
 |---|---|---|
-| Code change | GitHub PR opened, you merge | GitHub (you) |
-| Send email | Telegram inline → Approve | Executor via Gmail API |
-| Create calendar event | Telegram inline → Approve | Executor via Calendar API |
-| Update calendar event | Telegram inline → Approve | Executor via Calendar API |
-| Create task | Telegram inline → Approve | Executor via Tasks API |
-| Update task | Telegram inline → Approve | Executor via Tasks API |
-
----
+| Code change | GitHub PR + Linear approval | GitHub merge / executor follow-up |
+| Send email | Linear approval issue | Executor via Gmail API |
+| Create calendar event | Linear approval issue | Executor via Calendar API |
+| Update calendar event | Linear approval issue | Executor via Calendar API |
+| Create task | Linear approval issue | Executor via Tasks API |
+| Update task | Linear approval issue | Executor via Tasks API |
 
 ## Audit Trail
 
-Every action is logged in the `audit_log` table regardless of outcome:
+Every approval event is logged in `audit_log`.
 
 ```sql
 SELECT a.summary, a.status, a.agent_id, a.decided_at
@@ -87,4 +46,7 @@ ORDER BY a.created_at DESC
 LIMIT 20;
 ```
 
-You can always see exactly what agents did, drafted, and what you approved or rejected.
+Status lifecycle:
+- `pending`
+- `approved` / `rejected`
+- `delivered` / `failed`
