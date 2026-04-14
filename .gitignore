@@ -21,3 +21,5 @@ vault-sync.err
 credentials.json
 *-credentials.json
 service-account*.json
+homelab/.secrets/
+homelab/.state/

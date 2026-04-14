@@ -34,6 +34,42 @@ Typical responsibilities on Kali:
 - security tooling, diagnostics, and hardening tasks
 - remote operations from any approved terminal client
 
+## OpenCode + Ollama Baseline
+
+Kali is configured to run OpenCode against local Ollama.
+
+Current target models:
+- `nexusriot/Qwen3.5-Uncensored-HauhauCS-Aggressive:4b`
+- `huihui_ai/deepseek-r1-abliterated:7b`
+
+OpenCode config path:
+- `/root/.config/opencode/opencode.json`
+
+Instruction files:
+- `/root/.config/opencode/instructions/macintosh-role.md`
+- `/root/.config/opencode/instructions/pkb-bridge.md`
+
+Notes:
+- `nexusriot/Qwen3.5-Uncensored-HauhauCS-Aggressive:4b` is currently the OpenCode tool-call model on Kali (validated via `/v1/chat/completions` tool call response).
+- `huihui_ai/deepseek-r1-abliterated:7b` currently does not expose OpenAI-style tool calling in Ollama, so it is suitable for coding/reasoning completions but not tool-call JSON workflows.
+- model latency depends heavily on whether GPU offload is enabled on the VM.
+
+## Brain/PKB Session Sync
+
+Kali OpenCode sessions are synced from Mac into the Brain vault as raw conversation sources.
+
+Sync script (Mac):
+- `homelab/scripts/sync-kali-opencode-to-brain.sh`
+
+Output location:
+- `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Brain/Raw/Conversations/Kali OpenCode/`
+
+Local sync state:
+- `homelab/.state/kali-opencode-synced-sessions.txt`
+
+Recommended automation:
+- LaunchAgent on Mac to run the sync script on a short interval (for near-real-time PKB capture).
+
 ## Relationship to Agent Hub
 
 Kali and Agent Hub are complementary:

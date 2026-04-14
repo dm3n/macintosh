@@ -100,6 +100,10 @@ Expected operator experience:
 
 Reference: [docs/kali-ai-repository-node.md](docs/kali-ai-repository-node.md)
 
+Kali operations helpers in this repo:
+- `homelab/scripts/proxmox-api.sh` for token-based Proxmox API calls
+- `homelab/scripts/sync-kali-opencode-to-brain.sh` for syncing OpenCode session exports into Brain raw conversations
+
 ## Quick Start
 
 ```bash
