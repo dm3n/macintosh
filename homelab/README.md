@@ -16,6 +16,7 @@ This directory contains the Macintosh automation workload currently running on t
 - `scripts/ssh-tunnel.sh` — local debugging tunnels
 - `scripts/proxmox-api.sh` — authenticated Proxmox API helper (reads `homelab/.secrets/proxmox-api.env`)
 - `scripts/sync-kali-opencode-to-brain.sh` — sync Kali OpenCode sessions into Brain/Raw/Conversations
+- `scripts/gcp-model-host.sh` — control GCP GPU Ollama host (`start|stop|status`)
 
 ## Approval System (Automation Workload)
 
