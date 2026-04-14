@@ -91,6 +91,8 @@ Control model:
 
 Kali is a first-class Macintosh node for Linux-side AI and security operations.
 
+![Kali SSH Access](assets/screenshots/kali-ssh-access-2026-04-13.png)
+
 Expected operator experience:
 1. Open terminal (Superset or Warp).
 2. Run `ssh kali`.
