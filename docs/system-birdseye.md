@@ -23,7 +23,6 @@ Personal Cloud 2 (cluster resource pool)
   -> Proxmox virtualization layer
   -> VM/service workloads
      -> Kali VM (AI Repository + Cybersecurity node)
-     -> Agent Hub runtime stack (orchestrator, approval, executor, mcp, domain agents)
      -> Postgres + Redis state
 
 Control Boundary
@@ -48,7 +47,6 @@ Your personal cloud cluster is the always-available infrastructure substrate.
 
 - Proxmox manages compute virtualization
 - Cluster nodes host service VMs and runtime workloads
-- Agent Hub runs as a controlled automation runtime with approvals and auditability
 
 See: [Homelab Architecture](homelab-architecture.md), [Personal Cloud Cluster](personal-cloud-cluster.md), [Setup](setup.md)
 
@@ -67,7 +65,7 @@ See: [Kali AI Repository Node](kali-ai-repository-node.md)
 1. Build locally on Mac with your preferred coding agent in Superset.
 2. Use PKB context continuously so decisions persist beyond a single session.
 3. Jump to infrastructure instantly via `ssh kali` when Linux-side model/runtime work is needed.
-4. Keep automation safe: Agent Hub drafts actions, Linear approves, executor delivers.
+4. Keep automation safe: all external writes stay behind explicit approval.
 5. Maintain one coherent system instead of fragmented tools.
 
 See: [Operator Workflows](operator-workflows.md)

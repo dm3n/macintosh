@@ -32,9 +32,7 @@ Mac (Local Operator Layer)
 Personal Cloud 2 (Infrastructure Layer)
   -> Proxmox cluster resource pool
   -> Kali VM (AI Repository + Cybersecurity node)
-  -> Agent Hub runtime services
-     -> orchestrator / approval / executor / mcp / domain agents
-     -> Postgres + Redis
+  -> Postgres + Redis
 
 Control Layer
   -> Linear approval gate before external actions
@@ -78,7 +76,6 @@ Platform:
 
 Core workloads:
 - `kali` VM: AI repository and cybersecurity node
-- Agent Hub services: orchestrator, approval gateway, executor, MCP gateway, domain agents
 - State services: Postgres + Redis
 
 Control model:
