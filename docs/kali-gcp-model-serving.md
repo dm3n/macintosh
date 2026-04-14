@@ -6,7 +6,8 @@ This setup keeps Kali as the operator/runtime node and moves model inference to 
 
 - GCP project: `nodebase-473513`
 - VM: `ollama-gpu-1`
-- Zone: `us-central1-a`
+- Machine type: `a2-highgpu-1g` (A100 40GB)
+- Zone: `us-central1-b`
 - Reserved static IP: `35.239.94.39`
 - Serving API: `http://35.239.94.39:11434/v1`
 
@@ -31,6 +32,7 @@ Behavior:
 2. Wrapper waits until `GET /v1/models` is reachable.
 3. On process exit, a delayed idle check runs.
 4. If there are no active SSH sessions, the GPU VM is stopped.
+5. Non-inference commands (`--version`, `models`, `debug`, etc.) bypass lifecycle controls to avoid unnecessary delays.
 
 Default stop grace:
 - `120s`

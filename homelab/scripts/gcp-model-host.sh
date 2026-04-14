@@ -13,7 +13,7 @@ set -euo pipefail
 #   ./homelab/scripts/gcp-model-host.sh stop
 
 PROJECT="${PROJECT:-nodebase-473513}"
-ZONE="${ZONE:-us-central1-a}"
+ZONE="${ZONE:-us-central1-b}"
 INSTANCE="${INSTANCE:-ollama-gpu-1}"
 
 cmd="${1:-status}"
