@@ -195,29 +195,18 @@ Beyond the standard homelab agent stack, Macintosh runs personal agents — auto
 
 ### Sacred Secretion Agent
 
-**[`services/agents/sacred-secretion/`](services/agents/sacred-secretion/)**
+A practice agent that tracks the monthly lunar cycle and sends guiding emails at every phase of the sacred secretion process — deployed as a standalone web application on Vercel.
 
-Tracks the monthly lunar Gemini transit and sends practice-guiding emails throughout the sacred secretion cycle. The moon's ecliptic longitude is calculated locally using the `astronomia` package — no external API dependency. Cycle state is persisted in Postgres so the agent never double-sends and survives restarts.
+**Live app:** [sacred-secretion-agent.vercel.app](https://sacred-secretion-agent.vercel.app)
+**Source:** [github.com/dm3n/sacred-secretion-agent](https://github.com/dm3n/sacred-secretion-agent)
 
-Seven emails per cycle:
+Users sign up with their name, email, and natal sun sign. The agent calculates the moon's ecliptic longitude daily (no external API — uses the `astronomia` package locally), detects the lunar transit, and sequences 7 emails across the full monthly cycle.
 
-| Trigger | Email |
-|---|---|
-| Moon enters Gemini | Window is open — 2.5 days |
-| Day 1 of window | What to do today |
-| Day 2 of window | Gethsemane — the pressure point |
-| ~Hour 58 | Final hours — hold |
-| Day 7 post-window | The ascent — signals to watch |
-| Day 14 post-window | Deepen the practice |
-| Day 26 post-window | Next window in ~2 days |
-
-This agent is the automated implementation of **Publication III — The Map** from the sacred secretion research series:
+This is the automated implementation of **Publication III — The Map** from the sacred secretion research series:
 
 > **[github.com/dm3n/sacred-secretion](https://github.com/dm3n/sacred-secretion)**
 >
-> A three-paper series establishing the complete case for human divinity: the proof, the mathematical architecture, and the practical protocol. The sacred secretion agent is Publication III made operational.
-
-**Required env:** `RESEND_API_KEY` (see `.env.example`)
+> A three-paper series establishing the complete case for human divinity: the proof, the mathematical architecture, and the practical protocol.
 
 ---
 
