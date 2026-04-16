@@ -198,11 +198,12 @@ Beyond the standard homelab agent stack, Macintosh runs personal agents — auto
 A practice agent that tracks the monthly lunar cycle and sends guiding emails at every phase of the sacred secretion process — deployed as a standalone web application on Vercel.
 
 **Live app:** [sacred-secretion-agent.vercel.app](https://sacred-secretion-agent.vercel.app)
+
 **Source:** [github.com/dm3n/sacred-secretion-agent](https://github.com/dm3n/sacred-secretion-agent)
 
 Users sign up with their name, email, and natal sun sign. The agent calculates the moon's ecliptic longitude daily (no external API — uses the `astronomia` package locally), detects the lunar transit, and sequences 7 emails across the full monthly cycle.
 
-This is the automated implementation of **Publication III — The Map** from the sacred secretion research series:
+This is the automated implementation of **Publication III — The Map** from my sacred secretion research series:
 
 > **[github.com/dm3n/sacred-secretion](https://github.com/dm3n/sacred-secretion)**
 >
