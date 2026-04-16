@@ -189,6 +189,38 @@ Knowledge and operating system context:
 - [docs/team-communication.md](docs/team-communication.md)
 - [docs/repository-roadmap.md](docs/repository-roadmap.md)
 
+## Personal Agents
+
+Beyond the standard homelab agent stack, Macintosh runs personal agents — automation tied to Daniel's own life and practice rather than to Airbank operations.
+
+### Sacred Secretion Agent
+
+**[`services/agents/sacred-secretion/`](services/agents/sacred-secretion/)**
+
+Tracks the monthly lunar Gemini transit and sends practice-guiding emails throughout the sacred secretion cycle. The moon's ecliptic longitude is calculated locally using the `astronomia` package — no external API dependency. Cycle state is persisted in Postgres so the agent never double-sends and survives restarts.
+
+Seven emails per cycle:
+
+| Trigger | Email |
+|---|---|
+| Moon enters Gemini | Window is open — 2.5 days |
+| Day 1 of window | What to do today |
+| Day 2 of window | Gethsemane — the pressure point |
+| ~Hour 58 | Final hours — hold |
+| Day 7 post-window | The ascent — signals to watch |
+| Day 14 post-window | Deepen the practice |
+| Day 26 post-window | Next window in ~2 days |
+
+This agent is the automated implementation of **Publication III — The Map** from the sacred secretion research series:
+
+> **[github.com/dm3n/sacred-secretion](https://github.com/dm3n/sacred-secretion)**
+>
+> A three-paper series establishing the complete case for human divinity: the proof, the mathematical architecture, and the practical protocol. The sacred secretion agent is Publication III made operational.
+
+**Required env:** `RESEND_API_KEY` (see `.env.example`)
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

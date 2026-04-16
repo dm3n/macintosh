@@ -15,13 +15,14 @@ CREATE TABLE IF NOT EXISTS agents (
 );
 
 INSERT INTO agents (id, display_name) VALUES
-  ('orchestrator', 'Orchestrator'),
-  ('code',     'Code Agent'),
-  ('email',    'Email Agent'),
-  ('calendar', 'Calendar Agent'),
-  ('todo',     'Todo Agent'),
-  ('linear',   'Linear Agent'),
-  ('slack',    'Slack Agent')
+  ('orchestrator',      'Orchestrator'),
+  ('code',              'Code Agent'),
+  ('email',             'Email Agent'),
+  ('calendar',          'Calendar Agent'),
+  ('todo',              'Todo Agent'),
+  ('linear',            'Linear Agent'),
+  ('slack',             'Slack Agent'),
+  ('sacred-secretion',  'Sacred Secretion Agent')
 ON CONFLICT DO NOTHING;
 
 -- ─── Jobs ────────────────────────────────────────────────────────────────────
@@ -88,6 +89,24 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 CREATE INDEX IF NOT EXISTS audit_log_action_id_idx ON audit_log(action_id);
 CREATE INDEX IF NOT EXISTS audit_log_created_at_idx ON audit_log(created_at DESC);
+
+-- ─── Morning Reports ──────────────────────────────────────────────────────────
+
+-- ─── Sacred Secretion Cycles ─────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sacred_secretion_cycles (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  window_start  TIMESTAMPTZ NOT NULL,          -- when the moon entered Gemini
+  phase         TEXT NOT NULL DEFAULT 'window', -- 'window' | 'window-day1' | 'gethsemane' | 'ascent'
+  emails_sent   JSONB NOT NULL DEFAULT '[]',   -- array of email keys already sent
+  completed     BOOLEAN NOT NULL DEFAULT false,
+  completed_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS sacred_secretion_cycles_completed_idx
+  ON sacred_secretion_cycles(completed);
 
 -- ─── Morning Reports ──────────────────────────────────────────────────────────
 
