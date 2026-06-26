@@ -38,4 +38,7 @@ chmod +x "$ROOT_DIR/scripts"/*.sh "$ROOT_DIR/homelab/scripts"/*.sh
 log "Running repository validation"
 "$ROOT_DIR/scripts/validate-repo.sh"
 
+log "Installing macintosh skills"
+bash "$ROOT_DIR/scripts/install-skills.sh"
+
 log "Bootstrap complete"

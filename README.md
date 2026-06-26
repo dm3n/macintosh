@@ -1,14 +1,26 @@
 # Macintosh
 
-Macintosh is a personal AI operating system for shipping software, compounding knowledge, and running approval-safe automation across local and homelab infrastructure.
+Macintosh is my personal AI engineering OS — the complete system I use to build Airbank. It spans local development, a 6-agent coding pipeline, persistent knowledge memory, private cloud execution, and a 14-skill AI team on top of Claude Code.
 
-It is the operating model behind Airbank: one coherent system spanning local development, persistent memory, private cloud execution, and controlled delivery.
+Think of it as my custom version of [gstack](https://github.com/garrytan/gstack) — built for a fintech founder running multiple products simultaneously, tuned to my exact stack (Next.js 16, React 19, Supabase, GCP, shadcn/ui), and integrated with a self-hosted homelab and a persistent knowledge brain.
 
-## Install
+**The skills alone are worth the install.** 14 specialist Claude Code skills that cover the full development sprint — product interrogation, design review, live browser QA, OWASP security auditing, engineering retros, and more. All shadcn/ui-enforced, all Airbank-context-aware.
+
+## Install — 30 seconds
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dm3n/macintosh/main/scripts/install.sh | bash
 ```
+
+Or clone and bootstrap directly:
+
+```bash
+git clone https://github.com/dm3n/macintosh.git ~/lab/homelab-macintosh
+cd ~/lab/homelab-macintosh
+./scripts/bootstrap.sh
+```
+
+Restart Claude Code after install. Skills are immediately available via the Skill tool.
 
 ## What This Repository Is
 
@@ -105,15 +117,9 @@ Kali operations helpers in this repo:
 GCP offload reference:
 - [docs/kali-gcp-model-serving.md](docs/kali-gcp-model-serving.md)
 
-## Quick Start
+## Homelab Runtime
 
-```bash
-git clone https://github.com/dm3n/macintosh.git ~/lab/homelab-macintosh
-cd ~/lab/homelab-macintosh
-./scripts/bootstrap.sh
-```
-
-Bring homelab runtime up:
+After bootstrapping, bring the homelab stack up:
 
 ```bash
 cd homelab
@@ -122,6 +128,31 @@ cp -n .env.example .env
 docker compose up -d --build
 ```
 
+## Skills — Your AI Engineering Team
+
+14 specialist Claude Code skills, installed globally at `~/.claude/skills/macintosh/`. Each skill runs in the context of your stack, your projects, and your standards. All design skills enforce shadcn/ui — no exceptions.
+
+These complement [superpowers](https://github.com/obra/superpowers) and can be used alongside it. Superpowers handles core engineering discipline (brainstorming, TDD, debugging, code review, shipping). Macintosh skills handle the gaps: product thinking, design, live QA, security, and operations.
+
+| Skill | Role | What it does |
+|---|---|---|
+| `/product-review` | **Founder / YC Partner** | Six forcing questions before you build anything. Challenges framing, finds the real pain, proposes alternatives. |
+| `/autoplan` | **Architect** | Feature description → complete implementation plan, all files identified, risks noted, tasks broken out. |
+| `/design-review` | **Senior Designer** | Audits UI for shadcn/ui compliance, Tailwind v4 patterns, fintech aesthetic, accessibility, mobile. Fixes inline. |
+| `/plan-design-review` | **Design Reviewer** | Spec-level design audit before implementation. Checks shadcn/ui feasibility, component reuse, edge cases. |
+| `/design-shotgun` | **Design Explorer** | Generates 4–6 UI variants as real shadcn/ui code. Collects feedback, iterates, produces a winner. |
+| `/qa` | **QA Lead** | Opens a real browser, navigates flows like a user, finds and reports bugs CI misses. |
+| `/devex-review` | **DX Auditor** | Tests borrower portal onboarding, apply wizard UX, dev setup — times every step, finds friction. |
+| `/cso` | **Chief Security Officer** | OWASP Top 10 + STRIDE threat model, tuned for fintech (PII, mortgage data, Supabase auth, file uploads). |
+| `/benchmark` | **Performance Engineer** | Lighthouse, Core Web Vitals, API response times, bundle size — with before/after comparison. |
+| `/retro` | **Engineering Lead** | Weekly retro across all projects: commits, lines shipped, features delivered, next 3 priorities. |
+| `/document-release` | **Release Engineer** | Git log → release notes in two formats: technical (Linear) and stakeholder-facing (partners). |
+| `/canary` | **Deployment Lead** | Staged rollout plan with gate criteria, monitoring checkpoints, and copy-paste rollback commands. |
+| `/careful` | **Risk Officer** | Explicit confirmation gate before any destructive operation — migrations, auth changes, production deploys. |
+| `/browse` | **Researcher** | Real browser fetch for JS-rendered docs, competitor UX research, or any URL WebFetch can't handle. |
+
+See [docs/skills.md](docs/skills.md) for full documentation on each skill.
+
 ## Repository Structure
 
 ```text
@@ -129,6 +160,22 @@ docker compose up -d --build
 ├── assets/                         # readme/doc visuals
 │   └── screenshots/                # current architecture screenshots
 ├── docs/                           # system documentation
+│   └── skills.md                   # full skill reference
+├── skills/                         # macintosh Claude Code skills (source)
+│   ├── qa.md                       # live browser QA
+│   ├── cso.md                      # OWASP + STRIDE security audit
+│   ├── retro.md                    # weekly engineering retrospective
+│   ├── design-review.md            # shadcn/ui UI audit
+│   ├── plan-design-review.md       # spec-level design review
+│   ├── design-shotgun.md           # generate UI variants
+│   ├── product-review.md           # YC-style product interrogation
+│   ├── autoplan.md                 # feature → implementation plan
+│   ├── browse.md                   # real browser research
+│   ├── devex-review.md             # DX / onboarding audit
+│   ├── benchmark.md                # Lighthouse + Core Web Vitals
+│   ├── careful.md                  # risky operation gate
+│   ├── canary.md                   # staged rollout planning
+│   └── document-release.md         # release notes generator
 ├── homelab/
 │   ├── docker-compose.yml          # runtime stack definition
 │   ├── .env.example                # required env keys
@@ -136,6 +183,7 @@ docker compose up -d --build
 │   └── scripts/                    # deploy + tunnel scripts
 ├── scripts/
 │   ├── install.sh                  # one-command install/update
+│   ├── install-skills.sh           # installs skills to ~/.claude/skills/macintosh/
 │   ├── bootstrap.sh                # local bootstrap
 │   ├── validate-repo.sh            # repo consistency checks
 │   └── scrub-commits.sh            # optional history utility
@@ -169,6 +217,9 @@ Bird's-eye and product narrative:
 - [docs/system-birdseye.md](docs/system-birdseye.md)
 - [docs/operator-workflows.md](docs/operator-workflows.md)
 
+Skills:
+- [docs/skills.md](docs/skills.md)
+
 Local development and agents:
 - [docs/dev-environment.md](docs/dev-environment.md)
 - [docs/local-development-system.md](docs/local-development-system.md)
@@ -191,6 +242,13 @@ Knowledge and operating system context:
 
 ---
 
+## Related
+
+This engineering OS is the infrastructure behind the work catalogued in my
+**[AI Systems Portfolio](https://github.com/dm3n/daniel-edgar-ai-portfolio)** —
+production AI platforms, the Symphony autonomous dev runner, and frontier-model
+reasoning research.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -202,3 +260,5 @@ MIT. See [LICENSE](LICENSE).
 ## Maintainer
 
 Daniel Edgar — <daniel@nodebase.ca>
+
+<sub>Last updated: June 2026</sub>
