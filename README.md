@@ -245,7 +245,7 @@ Knowledge and operating system context:
 ## Related
 
 This engineering OS is the infrastructure behind the work catalogued in my
-**[AI Systems Portfolio](https://github.com/dm3n/daniel-edgar-ai-portfolio)** —
+**[AI Systems Portfolio](https://github.com/dm3n/portfolio)** —
 production AI platforms, the Symphony autonomous dev runner, and frontier-model
 reasoning research.
 
