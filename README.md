@@ -36,7 +36,7 @@ Macintosh is organised as five layers, each with a clear owner and boundary. Wor
 │  LAYER 1  LOCAL OPERATOR WORKSTATION (Mac)                                 │
 │    Superset (coding) + Warp (general shell)                                │
 │    4 aligned CLI agents: Claude Code · Codex · Gemini CLI · OpenCode       │
-│    superpowers baseline + 14 macintosh skills                             │
+│    karpathy guidelines baseline + 14 macintosh skills                      │
 │                                                                            │
 │  LAYER 2  KNOWLEDGE BRAIN  (Obsidian vault, iCloud-synced)                 │
 │    LLM-WIKI: Raw/ (sources) -> compile -> Wiki/ (pages + index + log)      │
@@ -44,7 +44,7 @@ Macintosh is organised as five layers, each with a clear owner and boundary. Wor
 │                                                                            │
 │  LAYER 3  CODING PIPELINE                                                  │
 │    Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect             │
-│    superpowers (discipline) + macintosh skills (product/design/QA/sec)     │
+│    karpathy guidelines + macintosh skills (product/design/QA/sec)          │
 └───────────────────────────────┬──────────────────────────────────────────┘
                                  │ Tailscale mesh
 ┌───────────────────────────────┴──────────────────────────────────────────┐
@@ -63,7 +63,7 @@ Macintosh is organised as five layers, each with a clear owner and boundary. Wor
 |---|---|---|---|
 | Local Workstation | Turns scoped work into tested, deployable output | Operator + CLI agents | [dev-environment](docs/dev-environment.md), [local-development-system](docs/local-development-system.md) |
 | Knowledge Brain | Compiles raw input into reusable long-term memory | The model (curated by human) | [knowledge-brain](docs/knowledge-brain.md) |
-| Coding Pipeline | Engineering discipline + specialist review | superpowers + skills | [development-workflow](docs/development-workflow.md), [skills](docs/skills.md), [superpowers](docs/superpowers.md) |
+| Coding Pipeline | Engineering discipline + specialist review | karpathy baseline + skills | [development-workflow](docs/development-workflow.md), [skills](docs/skills.md), [methodology](docs/methodology.md) |
 | Personal Cloud | Runs infrastructure and automation workloads | Homelab | [homelab-architecture](docs/homelab-architecture.md), [personal-cloud-cluster](docs/personal-cloud-cluster.md) |
 | Approval and Control | Enforces human review before external delivery | Linear gate | [approval-flow](docs/approval-flow.md) |
 
@@ -86,7 +86,7 @@ The Mac is the command center for code, context, and operator control. It owns i
 | Gemini CLI | `~/.gemini/GEMINI.md` | Default model `gemini-3` |
 | OpenCode | `~/.config/opencode/AGENTS.md` | Also runs on the Kali node |
 
-**superpowers** is a mandatory baseline on all four agents (brainstorming, TDD, debugging, code review, shipping discipline). Missing superpowers is treated as environment drift. See [docs/superpowers.md](docs/superpowers.md).
+The **Karpathy guidelines** are the always-on engineering baseline on all four agents: Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution. One byte-identical methodology section lives in each agent's config, so Claude Code, Codex, Gemini CLI, and OpenCode share the same discipline. See [docs/methodology.md](docs/methodology.md).
 
 ---
 
@@ -121,7 +121,7 @@ The nightly brain-sync (02:00) runs ingest and lint unattended, so new drops com
 
 ## Layer 3: The Coding Pipeline and Skills
 
-Development follows a single methodology across all agents: Think, Plan, Build, Review, Test, Ship, Reflect. superpowers supplies the core discipline; 14 macintosh skills fill the specialist gaps. All design skills enforce shadcn/ui. Skills install to `~/.claude/skills/macintosh/` via `scripts/install-skills.sh`.
+Development follows a single methodology across all agents: Think, Plan, Build, Review, Test, Ship, Reflect. The karpathy guidelines supply the always-on baseline; 14 macintosh skills fill the specialist gaps. All design skills enforce shadcn/ui. Skills install to `~/.claude/skills/macintosh/` via `scripts/install-skills.sh`.
 
 | Skill | Role | What it does |
 |---|---|---|
@@ -332,7 +332,7 @@ Make targets: `make install`, `make bootstrap`, `make validate`, `make homelab-u
 - [docs/local-development-system.md](docs/local-development-system.md)
 - [docs/development-workflow.md](docs/development-workflow.md)
 - [docs/agents.md](docs/agents.md)
-- [docs/superpowers.md](docs/superpowers.md)
+- [docs/methodology.md](docs/methodology.md)
 - [docs/skills.md](docs/skills.md)
 
 **Knowledge brain**

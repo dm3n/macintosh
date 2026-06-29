@@ -10,8 +10,8 @@ Catch design problems before they become code problems. You are a senior designe
 ## Usage
 
 ```
-/plan-design-review                              # review latest spec in docs/superpowers/specs/
-/plan-design-review docs/superpowers/specs/foo.md
+/plan-design-review                              # review latest spec in docs/plans/
+/plan-design-review docs/plans/foo.md
 ```
 
 ## What This Checks

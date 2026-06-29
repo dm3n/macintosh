@@ -25,7 +25,7 @@ Four coding agents share one context model:
 
 Shared guarantees:
 - same global standards and project context
-- same superpowers baseline
+- same karpathy guidelines baseline
 - same Brain vault references and memory loop
 
 ## Knowledge Backbone (PKB)

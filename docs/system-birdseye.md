@@ -16,7 +16,7 @@ Mac (local operator environment)
   -> Superset terminal for coding
   -> Warp terminal for general terminal work
   -> CLI coding agents: Codex, Claude, Gemini, OpenCode
-  -> Local dev repos + shared agent standards + superpowers + PKB workflows
+  -> Local dev repos + shared agent standards + karpathy guidelines + PKB workflows
   -> Tailscale secure mesh
 
 Personal Cloud 2 (cluster resource pool)
@@ -40,7 +40,7 @@ Your Mac is the daily control surface and primary development workstation.
 - Four coding agents are available with aligned context and standards
 - Brain/PKB system is local-first with iCloud-backed persistence
 
-See: [Dev Environment](dev-environment.md), [Local Development System](local-development-system.md), [Knowledge Brain](knowledge-brain.md), [Superpowers](superpowers.md)
+See: [Dev Environment](dev-environment.md), [Local Development System](local-development-system.md), [Knowledge Brain](knowledge-brain.md), [Methodology](methodology.md)
 
 ### 2) Personal Cloud 2 Cluster (Proxmox)
 Your personal cloud cluster is the always-available infrastructure substrate.

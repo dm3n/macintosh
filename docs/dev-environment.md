@@ -37,23 +37,21 @@ Four AI coding agents are configured globally. They share aligned context (Brain
 - **Global config**: `~/.gemini/GEMINI.md`
 - **Default model**: `gemini-3`
 
-### Global Superpowers Standard (All Agents)
+### Engineering Methodology Standard (All Agents)
 
-Superpowers is required at user/global scope for every coding agent in this environment.
+The Karpathy guidelines are the engineering baseline for every coding agent in this environment: Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution.
 
-Full standard and workflow details:
-- [docs/superpowers.md](superpowers.md)
+Full standard and tailored verify step:
+- [docs/methodology.md](methodology.md)
 
-Macintosh install baseline:
-- Codex: `~/.codex/superpowers` + `~/.agents/skills/superpowers` symlink
-- Claude Code: Superpowers plugin installed at user scope
-- Gemini CLI: Superpowers extension installed
-- OpenCode: Superpowers plugin configured globally
+How it is deployed:
+- The methodology lives as a byte-identical section in each agent's config: `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`, `~/.config/opencode/AGENTS.md`. Claude Code and Codex stay 100% aligned on it.
+- Also available as an invokable skill at `~/.claude/skills/macintosh/karpathy.md` (Claude Code) and `~/.agents/skills/macintosh/karpathy.md` (Codex).
 
-Update baseline:
+To re-sync the skill after editing `skills/karpathy.md`:
 
 ```bash
-git -C ~/.codex/superpowers pull --ff-only
+bash ~/lab/homelab-macintosh/scripts/install-skills.sh
 ```
 
 ---

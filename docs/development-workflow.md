@@ -1,6 +1,6 @@
 # Development Workflow
 
-This repository uses a superpowers-era workflow: focused execution loops with explicit validation, not legacy fixed-role Architect/Coder/QA chains.
+This repository uses a karpathy-guideline workflow: focused execution loops with explicit validation, not legacy fixed-role Architect/Coder/QA chains.
 
 ## Core Loop
 

@@ -82,7 +82,7 @@ Break the work into numbered tasks. Each task should be:
 
 ## Output
 
-Write the plan to `docs/superpowers/specs/YYYY-MM-DD-[feature]-plan.md`.
+Write the plan to `docs/plans/YYYY-MM-DD-[feature]-plan.md`.
 
 Format:
 
@@ -114,4 +114,4 @@ Done when: ...
 ...
 ```
 
-After writing the plan, invoke `superpowers:executing-plans` to run it.
+After writing the plan, execute it goal-driven: work one task at a time and run each task's verify check before moving on (per the karpathy guidelines).

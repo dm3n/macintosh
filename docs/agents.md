@@ -17,7 +17,7 @@ These are the main development agents in the local environment.
 | **OpenCode** | Alternate coding environment with plugin support | `~/.config/opencode/AGENTS.md` |
 
 Shared requirements across all four:
-- superpowers installed and active
+- karpathy guidelines active (engineering baseline)
 - same core project/brain context
 - same engineering standards
 

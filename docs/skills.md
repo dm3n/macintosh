@@ -1,8 +1,8 @@
 # Macintosh Skills
 
-14 specialist Claude Code skills installed globally at `~/.claude/skills/macintosh/`. Use them via the `Skill` tool or `/skill-name` slash command inside Claude Code.
+A `karpathy` methodology baseline plus 14 specialist Claude Code skills, installed globally at `~/.claude/skills/macintosh/`. Use them via the `Skill` tool or `/skill-name` slash command inside Claude Code.
 
-These complement [superpowers](https://github.com/obra/superpowers). Superpowers provides the engineering discipline backbone. Macintosh skills fill the gaps: product thinking, design, live testing, security, and release operations.
+The [Karpathy guidelines](methodology.md) are the always-on engineering baseline (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution). The specialist skills sit on top of it and fill the gaps: product thinking, design, live testing, security, and release operations.
 
 ---
 
@@ -15,7 +15,7 @@ Skills run in the order a sprint runs:
 ```
 /product-review       ← challenge the idea before writing code
 /autoplan             ← feature description → complete implementation plan
-  [build using superpowers:brainstorming + writing-plans + executing-plans]
+  [build against goal-driven success criteria, one verify step per task]
 /design-shotgun       ← explore UI variants before committing
 /plan-design-review   ← check design spec before building
   [implement]
@@ -32,6 +32,14 @@ Skills run in the order a sprint runs:
 ---
 
 ## Skill Reference
+
+### `/karpathy`
+**Role:** Engineering baseline
+**File:** `skills/karpathy.md`
+
+The always-on methodology layer for every coding agent: Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution. Tailored to the stack (shadcn/ui, `npx tsc --noEmit` while dev runs, `proxy.ts` not `middleware.ts`). Not usually invoked by hand; it is the default behavior the other skills build on. Invoke explicitly for a refresher or to re-anchor a drifting session.
+
+---
 
 ### `/product-review`
 **Role:** Founder / YC Partner
@@ -54,7 +62,7 @@ Modes:
 
 Convert a feature description into a complete, ready-to-execute implementation plan. Reads the current codebase, identifies every file to touch, maps risks and dependencies, breaks work into discrete tasks.
 
-Output goes to `docs/superpowers/specs/YYYY-MM-DD-[feature]-plan.md` then hands off to `superpowers:executing-plans`.
+Output goes to `docs/plans/YYYY-MM-DD-[feature]-plan.md`, structured as goal-driven steps (one verify check per step) so it can be executed and checked independently.
 
 Use when: you know what you want to build and don't need product interrogation.
 
@@ -196,23 +204,18 @@ Summarizes findings and optionally saves to `Brain/Raw/Research/`.
 
 ---
 
-## Relationship to Superpowers
+## Relationship to the Methodology Baseline
 
-Macintosh skills and superpowers are complementary:
+The `karpathy` guidelines are the always-on baseline: how every change is made (cautious, simple, surgical, goal-driven). The specialist skills are the named workflows you reach for at specific points in a sprint. The baseline governs behavior; the specialists govern process.
 
-| superpowers | macintosh |
+| Baseline (`karpathy`) | Specialist skills |
 |---|---|
-| `brainstorming` | `product-review`, `autoplan` |
-| `writing-plans` | `autoplan` (fast path) |
-| `systematic-debugging` | — |
-| `requesting-code-review` | `design-review` (UI-specific) |
-| `finishing-a-development-branch` | `canary`, `document-release` |
-| `verification-before-completion` | `qa`, `cso` |
-| — | `design-shotgun`, `plan-design-review` |
-| — | `devex-review`, `benchmark`, `retro` |
-| — | `careful`, `browse` |
+| Think Before Coding | `product-review`, `plan-design-review` |
+| Simplicity First | `design-review`, `design-shotgun` |
+| Surgical Changes | `careful` (gates the risky ones) |
+| Goal-Driven Execution | `autoplan`, `qa`, `cso`, `benchmark` |
 
-When in doubt: superpowers for engineering process, macintosh for product/design/ops.
+When in doubt: the baseline is always on; reach for a specialist skill at its moment in the sprint.
 
 ---
 
