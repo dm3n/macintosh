@@ -8,12 +8,9 @@ Macintosh starts on the Mac. This layer is your command center for code, context
 - keep all coding agents aligned to one operating model
 - keep long-term memory available inside every session
 
-## Terminal Roles
+## Terminal
 
-- **Superset**: primary terminal for coding sessions and agent-driven implementation
-- **Warp**: general terminal for broader shell workflows and non-coding operations
-
-This split keeps development ergonomics intentional: implementation in Superset, general ops in Warp.
+- **Warp**: primary terminal for coding sessions, agent-driven implementation, and general shell workflows.
 
 ## Local Agent System
 
@@ -50,4 +47,4 @@ This layer does **not** own long-running infrastructure execution. That belongs 
 
 ## Visual Anchor
 
-- **Image #3 (Superset)** represents this layer: active coding workspace with multiple agent tabs.
+- **Image #3** represents this layer: the active multi-agent coding workspace.

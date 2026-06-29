@@ -24,7 +24,7 @@ Macintosh is a long-horizon personal AI operating system. Contributions should o
 - [ ] Problem and outcome are clearly described.
 - [ ] Validation script passes locally.
 - [ ] Documentation is updated.
-- [ ] No drift introduced on model/version standards (Gemini 3, Superset terminal, etc.).
+- [ ] No drift introduced on model/version standards (Gemini 3, Warp terminal, etc.).
 - [ ] No secrets added.
 
 ## Commit Style

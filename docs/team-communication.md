@@ -46,7 +46,7 @@ Every deploy and every PR is visible to the team in `#dev` without anyone manual
 ### Structure
 
 ```
-Airbank HQ (team)
+Company HQ (team)
 ├── Sprints (1–2 week cycles)
 ├── Backlog
 ├── In Progress
@@ -80,7 +80,7 @@ Airbank HQ (team)
 ### Structure
 
 ```
-Airbank Workspace
+Company Workspace
 ├── Company Wiki
 │   ├── Mission & Vision
 │   ├── Product Roadmap

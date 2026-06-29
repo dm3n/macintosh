@@ -4,7 +4,7 @@ This page explains how Macintosh is meant to be used day-to-day as one coherent 
 
 ## Workflow A: Local Product Development
 
-1. Start in Superset for implementation work.
+1. Start in Warp for implementation work.
 2. Use Codex/Claude/Gemini/OpenCode based on task fit.
 3. Pull context from PKB before major architectural decisions.
 4. Implement, verify, and document in the relevant repository.
@@ -13,7 +13,7 @@ Outcome: fast local iteration with persistent context.
 
 ## Workflow B: Remote AI/Security Operations
 
-1. Open terminal (Superset or Warp).
+1. Open terminal (Warp).
 2. Run `ssh kali`.
 3. Perform Linux-side AI repository or cybersecurity tasks.
 4. Exit session when finished.

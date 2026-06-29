@@ -22,23 +22,23 @@ For small bug fixes and additive UI changes, a canary is overkill. Ship normally
 ```
 /canary "Google OAuth integration"
 /canary "new document processing pipeline"
-/canary "Supabase storage migration"
+/canary "document storage migration"
 ```
 
 ## Process
 
 **1. Define the canary population**
 
-Who sees this first? For Airbank:
+Who sees this first? For Finsider:
 - **Stage 1:** Internal only (Daniel + any test accounts)
-- **Stage 2:** Design partners (Ahmad, Mitch, Andrew) — by feature flag or separate environment
+- **Stage 2:** Design partners / pilot customers, by feature flag or separate environment
 - **Stage 3:** Full rollout
 
 **2. Define the feature flag or gate**
 
 How do you control who sees the new behavior?
 
-Options for Next.js + Supabase:
+Options for Next.js + Clerk:
 - Environment variable toggle (`NEXT_PUBLIC_FEATURE_X=true`)
 - User ID allowlist in a `feature_flags` table
 - A/B split by user ID modulo

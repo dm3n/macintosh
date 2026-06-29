@@ -144,12 +144,12 @@ Four memory types: `user` (preferences, expertise), `feedback` (corrections and 
 
 ---
 
-## Second Vault: Airbank Code Graph
+## Second Vault: Code Graph
 
 **Location:** `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Airbank/`
 **Auto-synced:** every 10 minutes via LaunchAgent `ca.nodebase.airbank-vault-sync`
 
-One linked note per source file across the Airbank repos. Import relationships become wikilinks, producing a navigable dependency graph. The sync script (`~/Airbank/scripts/sync-vault.py`) pulls each repo, walks `app/`, `components/`, `lib/`, `hooks/`, parses imports / exports / component names / HTTP methods, and writes a markdown note per file plus directory index notes.
+One linked note per source file across the mirrored repos. Import relationships become wikilinks, producing a navigable dependency graph. The sync script (`~/Airbank/scripts/sync-vault.py`) pulls each repo, walks `app/`, `components/`, `lib/`, `hooks/`, parses imports / exports / component names / HTTP methods, and writes a markdown note per file plus directory index notes.
 
 ---
 
@@ -158,7 +158,7 @@ One linked note per source file across the Airbank repos. Import relationships b
 | Job | Schedule | What it does |
 |---|---|---|
 | Nightly brain-sync | 02:00 daily | Apple Notes export, git history snapshots, **PKB ingest**, **PKB lint**, session summaries |
-| Airbank vault sync | every 10 min | Pull repos, regenerate the code graph, update `Home.md` timestamp |
+| Code vault sync | every 10 min | Pull repos, regenerate the code graph, update `Home.md` timestamp |
 | Claude Code memory | per session | Read `MEMORY.md` at start, write new memory files during the session |
 
 The nightly brain-sync is where ingest and lint run unattended: new `Raw/` drops get compiled into the wiki, then lint reports on the wiki's health.

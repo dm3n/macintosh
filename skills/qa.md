@@ -12,7 +12,7 @@ Open a real browser, walk through the app like a user, find what CI doesn't catc
 ```
 /qa https://staging.url.com
 /qa http://localhost:3000
-/qa http://localhost:3004/apply   # specific path
+/qa https://staging.finsider.ai   # specific environment
 ```
 
 ## What This Does
@@ -23,11 +23,11 @@ You are the QA lead. Your job is to find bugs that pass CI but break in producti
 
 **1. Identify key flows**
 
-Before opening the browser, list the flows you will test based on what changed. For Airbank projects:
+Before opening the browser, list the flows you will test based on what changed. For Finsider (Mitch):
 
-- Mortgage Platform: borrower `/apply` wizard (all 8 steps), portal login, document upload, data room viewer
-- QoE Platform: workbook creation, document upload, analysis SSE stream, cell editing, export
-- ROGI: all 8 wizard steps, submission, confirmation
+- Auth: Clerk sign-in / sign-up, session refresh
+- Core analysis: workbook creation, financial document upload, analysis SSE stream, cell editing, export
+- Reports and data room: viewing, filtering, downloads
 
 If given a specific path, focus on that feature and its dependencies.
 
@@ -74,9 +74,9 @@ Status: PASS / FAIL / PASS WITH NOTES
 
 ## Stack-Specific Checks
 
-Always verify these for Airbank projects:
+Always verify these for Finsider projects:
 
-- **Auth:** Supabase session cookie present; redirect to login on 401
+- **Auth:** Clerk session cookie present; redirect to login on 401
 - **SSE streams:** `/api/workbooks/[id]/analyze` — progress events firing, no hung connections
 - **File upload:** drag-and-drop + click-to-browse both work; progress indicator shows
 - **shadcn/ui:** no raw HTML form elements — every input, button, select must be a shadcn component

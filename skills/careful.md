@@ -64,11 +64,11 @@ If the operation cannot be reversed and something goes wrong, say so immediately
 - What state the system is in now
 - What the options are
 
-## Airbank-Specific Checks
+## Finsider-Specific Checks
 
 For database changes:
 - All migrations are additive first (add columns before dropping old ones)
-- RLS changes are tested with both `anon` and `authenticated` roles
+- Authorization/tenant rules are tested with both authenticated and unauthenticated requests
 - No migration touches both schema and data in the same statement
 
 For auth changes:

@@ -10,8 +10,8 @@ Describe what you want to build. Get a complete, ready-to-execute implementation
 ## Usage
 
 ```
-/autoplan "add Google OAuth to the borrower portal"
-/autoplan "build a debt schedule tab in the origination agent"
+/autoplan "add Google OAuth to the sign-in flow"
+/autoplan "build a debt schedule tab in the analysis view"
 /autoplan "add email notifications when a document is uploaded"
 ```
 
@@ -47,7 +47,7 @@ For the requested feature, define:
 
 **3. Identify all files to touch**
 
-List every file that will change or be created. For Airbank projects this typically includes:
+List every file that will change or be created. For Finsider projects this typically includes:
 - `app/api/` — new or modified routes
 - `app/` — page components
 - `components/` — UI components

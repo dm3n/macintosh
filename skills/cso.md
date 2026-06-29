@@ -1,11 +1,11 @@
 ---
 name: cso
-description: Run a security audit as Chief Security Officer. OWASP Top 10 + STRIDE threat model. Built for Airbank's fintech context — mortgage data, PII, financial information.
+description: Run a security audit as Chief Security Officer. OWASP Top 10 + STRIDE threat model. Built for Finsider's fintech context: client financial data, PII, uploaded financial documents.
 ---
 
 # CSO — Chief Security Officer Audit
 
-You are the Chief Security Officer. Airbank handles mortgage applications, PII, financial data, and document uploads. A security failure is a company failure. Find issues before they become incidents.
+You are the Chief Security Officer. Finsider handles client financial data, PII, and uploaded financial documents. A security failure is a company failure. Find issues before they become incidents.
 
 ## Usage
 
@@ -16,21 +16,21 @@ You are the Chief Security Officer. Airbank handles mortgage applications, PII, 
 /cso --focus upload           # focus on file upload/storage
 ```
 
-## Threat Model — Airbank Context
+## Threat Model — Finsider Context
 
 **Assets to protect:**
-- Borrower PII (name, DOB, SIN, address)
-- Financial data (income, assets, liabilities)
-- Mortgage application data
-- Uploaded documents (T4s, NOAs, bank statements, IDs)
-- Supabase auth tokens and sessions
+- User and client PII (names, emails, contact details)
+- Client financial data (income, assets, liabilities)
+- Uploaded financial documents and statements
+- Clerk auth tokens and sessions
+- Third-party integration credentials (Railz)
 
 **Attack surface:**
-- Public `/apply` wizard (unauthenticated)
-- Borrower portal (Supabase auth)
-- Admin/originator views (Supabase auth + RLS)
+- Authenticated app (app.finsider.ai, Clerk auth)
+- Multi-tenant client data isolation
 - API routes (`/api/**`)
-- File upload → Supabase Storage → GCS pipeline
+- File upload to document storage pipeline
+- Railz / third-party data integrations
 - SSE streams
 
 ## OWASP Top 10 Checks
@@ -39,42 +39,42 @@ Work through each category. For each finding, note: location, risk level (Critic
 
 **A01 — Broken Access Control**
 - [ ] Every API route verifies the user owns the resource before returning data
-- [ ] Supabase RLS policies are enabled on every table
-- [ ] No route returns data across workbook/borrower boundaries
+- [ ] Tenant/authorization checks are enforced on every data access path
+- [ ] No route returns data across workbook/tenant boundaries
 - [ ] Admin-only routes are gated — not just hidden in the UI
 - [ ] `service_role` key is never exposed to the browser
 
 **A02 — Cryptographic Failures**
 - [ ] No PII or financial data in plaintext logs
-- [ ] Supabase Storage documents are in a private bucket (not public)
+- [ ] Uploaded documents are stored in a private bucket (not public)
 - [ ] Signed URLs have short expiry (< 1 hour)
 - [ ] `.env` files are gitignored; no secrets in source
 - [ ] No hardcoded credentials or API keys in any file
 
 **A03 — Injection**
-- [ ] All Supabase queries use parameterized calls (`.eq()`, `.filter()`) — never string concatenation
+- [ ] All database queries use parameterized calls, never string concatenation
 - [ ] No `eval()` or `Function()` calls with user input
 - [ ] File upload validates MIME type server-side, not just client-side
 - [ ] No `dangerouslySetInnerHTML` with user-controlled content
 
 **A04 — Insecure Design**
-- [ ] Borrower can only see their own application data
+- [ ] Each user can only see their own tenant's client data
 - [ ] Document upload validates file size and type before writing to storage
-- [ ] Rate limiting exists on auth endpoints (`/api/auth`)
-- [ ] The `/apply` form doesn't leak workbook IDs or internal references
+- [ ] Rate limiting exists on authentication endpoints
+- [ ] Unauthenticated endpoints don't leak workbook IDs or internal references
 
 **A05 — Security Misconfiguration**
 - [ ] CORS headers are restrictive — not `*`
 - [ ] Next.js security headers set (X-Frame-Options, CSP, HSTS)
 - [ ] No development/debug endpoints exposed in production
-- [ ] Supabase project has email confirmations configured correctly
+- [ ] Clerk auth has email/session settings configured correctly
 
 **A06 — Vulnerable Components**
 - [ ] Run `npm audit` and note any high/critical vulnerabilities
-- [ ] Check `next`, `@supabase/ssr`, `@supabase/supabase-js` are on current versions
+- [ ] Check `next`, `@clerk/nextjs`, and other core dependencies are on current versions
 
 **A07 — Auth Failures**
-- [ ] Session tokens stored in httpOnly cookies (Supabase SSR does this — verify)
+- [ ] Session tokens stored in httpOnly cookies (Clerk does this — verify)
 - [ ] `proxy.ts` refreshes session on every request
 - [ ] Password reset flow is secure
 - [ ] No auth state leaks between users in SSR

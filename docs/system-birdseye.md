@@ -13,8 +13,7 @@ Macintosh exists to do three things at once:
 
 ```text
 Mac (local operator environment)
-  -> Superset terminal for coding
-  -> Warp terminal for general terminal work
+  -> Warp terminal for coding and general terminal work
   -> CLI coding agents: Codex, Claude, Gemini, OpenCode
   -> Local dev repos + shared agent standards + karpathy guidelines + PKB workflows
   -> Tailscale secure mesh
@@ -35,7 +34,7 @@ Control Boundary
 Your Mac is the daily control surface and primary development workstation.
 
 - Coding experience is terminal-first
-- Superset is used for implementation-focused coding sessions
+- Warp is used for implementation-focused coding sessions
 - Warp is used for general-purpose terminal tasks
 - Four coding agents are available with aligned context and standards
 - Brain/PKB system is local-first with iCloud-backed persistence
@@ -62,7 +61,7 @@ See: [Kali AI Repository Node](kali-ai-repository-node.md)
 
 ## Operator Story (How It Feels)
 
-1. Build locally on Mac with your preferred coding agent in Superset.
+1. Build locally on Mac with your preferred coding agent in Warp.
 2. Use PKB context continuously so decisions persist beyond a single session.
 3. Jump to infrastructure instantly via `ssh kali` when Linux-side model/runtime work is needed.
 4. Keep automation safe: all external writes stay behind explicit approval.
@@ -75,6 +74,6 @@ See: [Operator Workflows](operator-workflows.md)
 These screenshots map to key layers of the system:
 - **Image #1**: PKB graph view in the Brain vault (knowledge layer)
 - **Image #2**: Proxmox VM console while Kali node is being installed (infrastructure layer)
-- **Image #3**: Superset multi-agent coding workspace (local development layer)
+- **Image #3**: multi-agent coding workspace (local development layer)
 
 Use these visuals as orientation points when onboarding the stack.

@@ -35,11 +35,11 @@ for f in "${required_files[@]}"; do
 done
 pass "Required files exist"
 
-if rg -n "gemini-2\\.0|Gemini 2\\.0|gemini-2-0|Warp \\+ Zsh|Terminal: \\*\\*Warp\\*\\*|replaced Warp" \
+if rg -n "gemini-2\\.0|Gemini 2\\.0|gemini-2-0" \
   "$ROOT_DIR/README.md" "$ROOT_DIR/docs" >/dev/null; then
-  fail "Found stale platform/model references (Gemini 2.0 or Warp)."
+  fail "Found stale model references (Gemini 2.0)."
 fi
-pass "No stale model/terminal references"
+pass "No stale model references"
 
 if ! rg -n "Gemini 3|gemini-3" "$ROOT_DIR/README.md" "$ROOT_DIR/docs" >/dev/null; then
   fail "Gemini 3 reference missing from docs"

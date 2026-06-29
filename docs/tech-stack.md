@@ -11,8 +11,8 @@ Complete catalogue of every tool in the personal and company stack, organised by
 | **Claude Code** | Primary development environment | AI-native terminal IDE — architects, codes, reviews, and deploys. Agents handle full implementation loops. |
 | **Claude (claude.ai)** | Strategy, writing, research | Complex reasoning, pitch drafting, market analysis, long-context work |
 | **Perplexity** | Live internet research | Real-time competitor monitoring, news, market intelligence with citations |
-| **Gemini 3 Flash** | In-product AI (Airbank) | Document extraction, QoE analysis via Vertex AI |
-| **Vertex AI** | AI infrastructure (Airbank) | RAG corpus management, Gemini model serving, GCP integration |
+| **Gemini 3 Flash** | In-product AI | Document extraction, QoE analysis via Vertex AI |
+| **Vertex AI** | AI infrastructure | RAG corpus management, Gemini model serving, GCP integration |
 
 ---
 
@@ -20,9 +20,9 @@ Complete catalogue of every tool in the personal and company stack, organised by
 
 | Tool | Role | Why |
 |------|------|-----|
-| **Superset + Zsh** | Terminal | Fast shell workflow with persistent sessions and split panes |
+| **Warp** | Terminal | Fast shell workflow with persistent sessions and split panes |
 | **Warp** | General terminal | Secondary shell surface for non-coding operations and everyday terminal work |
-| **GitHub** | Version control + code hosting | All repos — private (Airbank products) and public (open source) |
+| **GitHub** | Version control + code hosting | All repos — private (product repos) and public (open source) |
 | **Vercel** | Deployment | Zero-config Next.js deploys, preview URLs per PR, edge network |
 | **Linear** | Project management | Dev sprints, issue tracking, GitHub PR integration, roadmap |
 
@@ -59,7 +59,7 @@ Every project uses shadcn/ui for all UI components — no exceptions.
 |------|------|-----|
 | **LinkedIn Premium + Sales Navigator** | B2B outreach | Investor and enterprise customer pipeline. Sales Nav for advanced search filters. |
 | **Dripify** | LinkedIn automation | Automated connection sequences, message drip campaigns for investor/customer outreach |
-| **Instagram (verified)** | Brand presence | Personal brand and Airbank presence |
+| **Instagram (verified)** | Brand presence | Personal brand and company presence |
 | **ManyChat** | Social media automation | Automated DM flows, lead capture from social |
 
 ---
@@ -87,7 +87,7 @@ Every project uses shadcn/ui for all UI components — no exceptions.
 | Tool | Role | Why |
 |------|------|-----|
 | **Google Cloud Platform** | Cloud infrastructure | Vertex AI, Cloud Storage, project management |
-| **Supabase** | Database + auth | PostgreSQL, row-level security, auth, file storage. One project across all Airbank products. |
+| **Supabase** | Database + auth | PostgreSQL, row-level security, auth, file storage. One project across product apps. |
 | **Proxmox** | Bare-metal hypervisor | 2-node home server cluster running all self-hosted services |
 | **Docker** | Containerisation | All homelab services and AI agents in containers |
 | **Tailscale** | VPN mesh | Zero-config secure access to homelab from any device, anywhere |

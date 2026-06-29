@@ -1,6 +1,6 @@
 ---
 name: benchmark
-description: Run performance benchmarks on Airbank apps. Lighthouse scores, Core Web Vitals, API response times, bundle size. Compare before/after for any optimization work.
+description: Run performance benchmarks on Finsider apps. Lighthouse scores, Core Web Vitals, API response times, bundle size. Compare before/after for any optimization work.
 ---
 
 # Benchmark — Performance Measurement
@@ -11,7 +11,7 @@ Measure before you optimize. Know your numbers before and after any performance-
 
 ```
 /benchmark http://localhost:3000          # full Lighthouse + vitals
-/benchmark http://localhost:3004/apply   # specific page
+/benchmark https://staging.finsider.ai   # specific environment
 /benchmark --api /api/workbooks          # API response time only
 /benchmark --bundle                      # Next.js bundle analysis
 ```
@@ -31,7 +31,7 @@ Measure before you optimize. Know your numbers before and after any performance-
 
 **API Response Times**
 
-For key Airbank API routes, measure median and p95:
+For key Finsider API routes, measure median and p95:
 - `GET /api/workbooks` — list workbooks
 - `GET /api/workbooks/[id]/cells` — fetch all cells
 - `GET /api/workbooks/[id]/analyze` — SSE stream (time to first event)

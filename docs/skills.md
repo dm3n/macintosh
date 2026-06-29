@@ -136,7 +136,7 @@ Live browser testing against a URL or local port. Navigates key flows like a rea
 
 Stack-specific checks: Supabase session cookies, SSE stream health, file upload flows, mobile at 375px.
 
-Run before every feature ship. Use against `http://localhost:3000`, `http://localhost:3004`, or a staging URL.
+Run before every feature ship. Use against `http://localhost:3000` (Mitch-fe), `http://localhost:1337` (Mitch-be), or `https://staging.finsider.ai`.
 
 ---
 
@@ -147,8 +147,8 @@ Run before every feature ship. Use against `http://localhost:3000`, `http://loca
 Tests the actual user experience of your key flows by walking through them as a first-time user. Measures time-to-core-action, records friction points with severity, and fixes or files what's found.
 
 Three audit modes:
-- `borrower` — portal invite link → first document uploaded (target: < 3 minutes)
-- `apply` — application link → complete submission (target: < 12 minutes)
+- `onboarding` — sign-up/invite link → first financial document uploaded (target: < 3 minutes)
+- `workflow` — core product workflow end to end (run an analysis on a client's financials)
 - `dev` — repo clone → first working service (target: < 10 minutes)
 
 ---
@@ -157,7 +157,7 @@ Three audit modes:
 **Role:** Chief Security Officer
 **File:** `skills/cso.md`
 
-OWASP Top 10 + STRIDE threat model, tuned for Airbank's fintech context: PII, mortgage data, Supabase auth and RLS, document uploads, API routes.
+OWASP Top 10 + STRIDE threat model, tuned for a fintech context: PII, financial data, Supabase auth and RLS, document uploads, API routes.
 
 Outputs findings in Critical / High / Medium / Low tiers. Fixes Critical findings inline. Files High and Medium as Linear issues.
 

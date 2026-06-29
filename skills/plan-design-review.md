@@ -50,7 +50,7 @@ Flag any divergence from existing patterns. If the spec is better than what exis
 
 **4. Information Architecture**
 
-Is the content organized logically for a mortgage/financial product user?
+Is the content organized logically for a financial product user?
 - Complex forms are broken into steps (wizard pattern), not one long scroll
 - Data-heavy views use tables with filtering, not unstructured lists
 - Actions (approve, submit, upload) are always visible, not buried

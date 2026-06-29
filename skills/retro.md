@@ -1,6 +1,6 @@
 ---
 name: retro
-description: Run a weekly engineering retrospective across all active Airbank projects. Counts commits, lines shipped, features delivered. Saves report to Brain.
+description: Run a weekly engineering retrospective across all active Finsider projects. Counts commits, lines shipped, features delivered. Saves report to Brain.
 ---
 
 # Retro — Weekly Engineering Retrospective
@@ -12,7 +12,7 @@ Look at what shipped, what didn't, and what to do differently. Takes 2 minutes t
 ```
 /retro                     # this week
 /retro --since 2026-04-07  # custom window
-/retro --project mortgage  # single project
+/retro --project mitch-fe  # single project
 ```
 
 ## Process
@@ -22,20 +22,16 @@ Look at what shipped, what didn't, and what to do differently. Takes 2 minutes t
 Run across all active projects:
 
 ```bash
-# Mortgage Platform
-git -C "/Users/dm3n/Airbank/Airbank Mortgage Platform" log \
+# Mitch-fe (frontend)
+git -C ~/finsider-platform/Mitch-fe log \
   --since="7 days ago" --oneline --no-merges | wc -l
 
-git -C "/Users/dm3n/Airbank/Airbank Mortgage Platform" diff \
+git -C ~/finsider-platform/Mitch-fe diff \
   --stat HEAD~$(git log --since="7 days ago" --oneline | wc -l) HEAD \
   2>/dev/null | tail -1
 
-# QoE Platform
-git -C "/Users/dm3n/Airbank/Airbank Platform" log \
-  --since="7 days ago" --oneline --no-merges
-
-# ROGI
-git -C "/Users/dm3n/Projects/rogi" log \
+# Mitch-be (backend)
+git -C ~/finsider-platform/Mitch-be log \
   --since="7 days ago" --oneline --no-merges
 ```
 
@@ -65,7 +61,7 @@ Check `Brain/Projects/` and recent session summaries for what was planned this w
 
 **5. Set next week's 3 priorities**
 
-Three things only. Not a wishlist — the three things that matter most for Airbank right now.
+Three things only. Not a wishlist, just the three things that matter most for Finsider right now.
 
 ## Output Format
 
@@ -80,13 +76,13 @@ Three things only. Not a wishlist — the three things that matter most for Airb
 - Brain sessions: K
 
 ### What Shipped
-**Mortgage Platform**
+**Mitch-fe (frontend)**
 - [bullet list of meaningful commits]
 
-**QoE Platform**
+**Mitch-be (backend)**
 - [bullet list]
 
-**ROGI / Other**
+**Other**
 - [bullet list]
 
 ### What Didn't Ship

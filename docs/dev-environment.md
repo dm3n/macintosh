@@ -7,7 +7,7 @@ Single source of truth for the local dev pipeline, coding agents, and knowledge 
 
 ## Terminal
 
-- **Superset + Zsh** — coding-first terminal environment for implementation sessions
+- **Warp** — primary terminal for coding and implementation sessions
 - **Warp** — general-purpose terminal for broader shell/ops workflows
 
 ---
@@ -121,9 +121,8 @@ Brain/
 
 | Project | Path | Port | Stack |
 |---|---|---|---|
-| QoE Platform | `/Users/dm3n/Airbank/Airbank Platform` | 3000 | Next.js 16 + React 19 |
-| Airbank Mortgage Platform | `/Users/dm3n/Airbank/Airbank Mortgage Platform` | 3004 | Next.js 16 |
-| ROGI | `/Users/dm3n/Projects/rogi` | 3002 | Next.js 16 |
+| Finsider Mitch-fe | `~/finsider-platform/Mitch-fe` | 3000 | Next.js (Clerk auth) |
+| Finsider Mitch-be | `~/finsider-platform/Mitch-be` | 1337 | Strapi / SQLite (Node 20) |
 
 ---
 

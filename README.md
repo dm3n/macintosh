@@ -34,7 +34,7 @@ Macintosh is organised as five layers, each with a clear owner and boundary. Wor
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  LAYER 1  LOCAL OPERATOR WORKSTATION (Mac)                                 │
-│    Superset (coding) + Warp (general shell)                                │
+│    Warp (primary terminal)                                                 │
 │    4 aligned CLI agents: Claude Code · Codex · Gemini CLI · OpenCode       │
 │    karpathy guidelines baseline + 14 macintosh skills                      │
 │                                                                            │
@@ -75,7 +75,7 @@ Macintosh is organised as five layers, each with a clear owner and boundary. Wor
 
 The Mac is the command center for code, context, and operator control. It owns implementation, debugging, documentation, and context synthesis. It does not own long-running infrastructure execution; that belongs to the personal cloud.
 
-**Terminals.** Superset is the primary coding surface (implementation-first, agent-driven). A general shell handles everyday terminal workflows.
+**Terminal.** Warp is the primary terminal: implementation-first, agent-driven coding plus everyday shell workflows.
 
 **Four aligned CLI agents.** Each runs the same context (Brain vault, project paths, engineering standards) through its own config file, so any agent can pick up where another left off.
 
@@ -115,7 +115,7 @@ The Brain is a personal implementation of Karpathy's **LLM-WIKI.md** architectur
 - `Wiki/index.md`: auto-generated catalog of every page with a one-line summary, by category. Read first on every query.
 - `Wiki/log.md`: append-only operations log; entries are `## [YYYY-MM-DD] op | title`, greppable with standard unix tools.
 
-The nightly brain-sync (02:00) runs ingest and lint unattended, so new drops compile into the wiki and the wiki's health is reported every day. A second vault mirrors the Airbank codebase as a linked dependency graph, re-synced every 10 minutes.
+The nightly brain-sync (02:00) runs ingest and lint unattended, so new drops compile into the wiki and the wiki's health is reported every day. A second vault mirrors a working codebase as a linked dependency graph, re-synced every 10 minutes.
 
 ---
 
@@ -142,7 +142,7 @@ Development follows a single methodology across all agents: Think, Plan, Build, 
 
 Full reference: [docs/skills.md](docs/skills.md).
 
-![Superset Coding Workspace](assets/screenshots/superset-coding-workspace-2026-04-13.png)
+![Multi-agent coding workspace](assets/screenshots/superset-coding-workspace-2026-04-13.png)
 
 ---
 
@@ -235,7 +235,7 @@ It runs OpenCode against local Ollama models, with the heavy inference optionall
 | Domain | Tools |
 |---|---|
 | AI and intelligence | Claude Code (primary), Claude.ai (strategy/writing), Gemini 3 (in-product), Vertex AI, Perplexity (research), local Ollama on Kali |
-| Development | Superset, GitHub, Vercel, Linear |
+| Development | Warp, GitHub, Vercel, Linear |
 | Standard app stack | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui (no exceptions) |
 | Knowledge | Obsidian (Brain vault, iCloud-synced), Notion (company KB), Apple Notes (capture) |
 | Communication | Slack (real-time), Linear (dev), Notion (async) |

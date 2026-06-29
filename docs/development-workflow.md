@@ -50,8 +50,8 @@ Before merge:
 ## Local Dev References
 
 ```bash
-# Airbank Platform
-cd "/Users/dm3n/Airbank/Airbank Platform"
+# Finsider (Mitch-fe)
+cd ~/finsider-platform/Mitch-fe
 npm run dev
 
 # ROGI
@@ -59,4 +59,4 @@ cd "/Users/dm3n/Projects/rogi"
 npm run dev -- --port 3002
 ```
 
-Terminal baseline: Superset + Zsh for coding; Warp for general terminal workflows.
+Terminal baseline: Warp for coding and general terminal workflows.

@@ -12,7 +12,7 @@ Turn git history into communication. Two formats: one for the team, one for stak
 ```
 /document-release                          # since last tag or last week
 /document-release --since v1.2.0           # since a specific tag
-/document-release --project mortgage       # single project
+/document-release --project mitch-fe       # single project
 /document-release --audience stakeholder   # only generate stakeholder version
 ```
 
@@ -74,7 +74,7 @@ Strip any internal implementation details. These notes may be shared with LOI pa
 ### Stakeholder
 
 ```markdown
-## Airbank Product Update — [date]
+## Finsider Product Update — [date]
 
 **[Project Name]**
 
