@@ -1,156 +1,184 @@
-# Knowledge Brain — Obsidian Persistent Context System
+# Knowledge Brain: Self-Maintaining PKB (LLM-WIKI Architecture)
 
-> No context is ever lost. Every conversation, session, decision, and project note is captured in a structured, linked knowledge graph — queryable by any AI model at any time.
+> No context is ever lost. Every conversation, source, decision, and project note is compiled into a structured, interlinked wiki, queryable by any AI model at any time. Knowledge is compiled once at ingest, not re-derived on every query.
+
+The Brain is a personal implementation of Karpathy's **LLM-WIKI.md** pattern: a self-maintaining knowledge base in which the model does the bookkeeping that humans never sustain. The human curates and directs (selects sources, sets direction, oversees synthesis). The model writes, cross-references, and reconciles. That boundary is enforced architecturally, not by discipline.
 
 ---
 
 ## The Problem It Solves
 
-AI models have no memory between sessions. Every conversation starts blank. Without a persistent context system, you re-explain the same background constantly, lose decisions made in past sessions, and can't build on prior work across tools.
+AI models have no memory between sessions. Every conversation starts blank. Without persistent context you re-explain the same background constantly, lose decisions made in past sessions, and cannot build on prior work across tools.
 
-The Brain vault solves this by acting as a permanent second brain that any AI (Claude Code, Claude.ai, future models) reads at the start of every session to instantly understand the full context of who Daniel is, what Airbank is building, and every decision that's been made.
+Classic note systems (Roam, Notion, Obsidian) lower the friction of capture but leave the bookkeeping burden intact. Wikis need editors. Most personal wikis quietly rot. RAG systems avoid the wiki entirely by re-deriving knowledge from raw chunks on every query, so nothing accumulates.
+
+This Brain shifts the maintenance burden to the model. Given a new source, the model reads, summarises, integrates, cross-references, and flags contradictions, producing a persistent compiled artifact rather than an indexed pile of chunks.
 
 ---
 
-## Two Vaults
+## Compilation vs Retrieval
 
-### 1. Brain Vault — Personal Knowledge Base
+| | RAG (retrieve) | This Brain (compile) |
+|---|---|---|
+| When synthesis happens | Every query | Once, at ingest |
+| What accumulates | Nothing | The wiki compounds per source |
+| Per-query cost | Re-derive from chunks | Read an already-compiled page |
+| Cross-references | Re-discovered each time | Resolved once and stored |
+| Contradictions | Invisible | Flagged at ingest and by lint |
+
+Below roughly 100 sources and a few hundred wiki pages, the index file plus the model's context window are sufficient. No embedding or vector infrastructure is required at this scale.
+
+---
+
+## Three Layers
+
+Each layer has a single owner. This is what enforces the human-curates / model-writes separation.
+
+| Layer | Path | Owner | Rule |
+|---|---|---|---|
+| 1. Raw sources | `Brain/Raw/` | Human | Immutable. Articles, transcripts, notes, papers. Never edited after arrival. Ground truth. |
+| 2. Schema | `Brain/System/PKB/schema.md` + `Brain/CLAUDE.md` | Co-authored | Directory structure, page templates, cross-reference conventions, lint criteria. The rules the model is governed by. |
+| 3. Wiki | `Brain/Wiki/` | Model | Entirely model-generated. Entity pages, concept pages, SOPs, summaries, an index, a log. The human reads it, the model writes it. |
+
+`Raw/` is sorted into drop zones: `News/`, `Blog/`, `Personal/`, `Company/`, `Research/`, `Conversations/`, `Inbox/`. Processed sources move to `Raw/Processed/`.
+
+`Wiki/` is organised into `Entities/People/`, `Entities/Companies/`, `Concepts/`, `Frameworks/`, `SOPs/`, `Summaries/`, and `Compiled/` (saved query answers).
+
+---
+
+## Three Operational Primitives
+
+Three operations cover all routine interaction with the Brain.
+
+| Primitive | Trigger | Scope | Output | Script |
+|---|---|---|---|---|
+| **Ingest** | New source in `Raw/` | 1 source, N pages | Summary + entity/concept upserts + index rebuild + log entry | `pkb-process.py` |
+| **Query** | A question | `index.md`, K pages | Answer with citations, optionally filed as a new `Compiled/` page | `pkb-query.py` |
+| **Lint** | Periodic (nightly) | Entire wiki | Health report + log entry | `pkb-lint.py` |
+
+### Ingest
+
+`python3 ~/.claude/scripts/pkb-process.py`
+
+Reads each pending file in `Raw/`, runs it through Claude against the schema, then writes a summary to `Wiki/Summaries/`, upserts People / Companies / Concepts / SOP pages, archives the original to `Raw/Processed/`, rebuilds `Wiki/index.md`, and appends an `ingest` entry to `Wiki/log.md`. A single ingest can touch a dozen wiki pages. Use `--dry-run` to preview, `--file <path>` for one file.
+
+### Query
+
+`python3 ~/.claude/scripts/pkb-query.py "question"`
+
+Reads `Wiki/index.md` first, selects the most relevant pages across the whole vault within a token budget, and synthesises an answer with sources. With `--save`, a substantive answer is filed back into `Wiki/Compiled/` as a new page and logged. `--interactive` opens a REPL.
+
+### Lint
+
+`python3 ~/.claude/scripts/pkb-lint.py`
+
+The periodic health check. It scans for:
+
+- **Orphan pages**: linkable knowledge pages no other note links to.
+- **Broken links / missing entries**: `[[targets]]` referenced but lacking their own page (concepts mentioned but never written up).
+- **Stale claims**: pages untouched for more than 120 days, or carrying a `[?]` uncertainty marker.
+- **Contradictions**: with `--deep`, an LLM pass over page leads surfaces directly conflicting claims.
+
+Lint writes `Wiki/lint-report.md` and appends a `lint` entry to the log. It never edits the wiki; acting on the report is curation, which stays with the human.
+
+---
+
+## Index and Log (Layer 3 navigation, model-owned)
+
+Two special files govern navigation. Both are regenerated/appended by the scripts. Do not hand-edit.
+
+- **`Wiki/index.md`**: an auto-generated catalog of every wiki page with a one-line summary, organised by category. The query primitive reads this first. At moderate scale this removes the need for any search layer.
+- **`Wiki/log.md`**: an append-only chronological record. Every ingest, saved query, and lint run appends one entry formatted `## [YYYY-MM-DD] op | title`, so the log is parseable with standard unix tools (for example `grep '] ingest |' log.md`).
+
+---
+
+## Engine Source
+
+The four scripts that implement the primitives are vendored in this repo at [`scripts/pkb/`](../scripts/pkb/) and installed to `~/.claude/scripts/` by `scripts/install-pkb.sh` (run automatically by `bootstrap.sh`).
+
+| File | Role |
+|---|---|
+| `pkb_common.py` | Shared helpers: `rebuild_index()` and `append_log()` (the two navigation files). |
+| `pkb-process.py` | Ingest primitive. |
+| `pkb-query.py` | Query primitive. |
+| `pkb-lint.py` | Lint primitive. |
+
+---
+
+## Vault Layout
 
 **Location:** `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Brain/`
 **Synced via:** iCloud (available on all devices)
 
 ```
 Brain/
-├── Memory/           # AI agent memory files — loaded at session start
-│   ├── MEMORY.md     # Index — always loaded by Claude Code
-│   ├── user_*.md     # Who Daniel is, preferences, expertise
-│   ├── project_*.md  # Active project context
-│   ├── feedback_*.md # Corrections and validated approaches
-│   └── reference_*.md# External system pointers (Linear, Supabase, etc.)
-│
-├── Projects/         # Per-project notes
-│   ├── Airbank Platform.md
-│   ├── Airbank — Road to $1B.md
-│   ├── rogi.md
-│   └── Git/          # Auto-generated git summaries per repo
-│
-├── Claude Sessions/  # Every Claude Code session auto-saved as markdown
-├── Claude Web Chats/ # claude.ai conversations auto-exported nightly
-├── Apple Notes/      # iPhone/Mac notes exported nightly via script
-├── People/           # Contacts — investors, advisors, customers
-├── Daily/            # Daily notes (template-based)
-├── Airbank/          # Airbank company hub note with dataview queries
-├── System/           # Automation scripts, LaunchAgents, SOPs
-└── Inbox/            # Quick capture, unsorted
+├── CLAUDE.md          # Layer 2: vault-scoped agent context + rules
+├── Raw/               # Layer 1: immutable sources (News, Blog, Personal,
+│                      #          Company, Research, Conversations, Inbox, Processed)
+├── Wiki/              # Layer 3: model-generated knowledge
+│   ├── index.md       #   catalog of every page (read first on query)
+│   ├── log.md         #   append-only operations log
+│   ├── lint-report.md #   latest health check
+│   ├── Entities/      #   People/ + Companies/
+│   ├── Concepts/      #   frameworks, mental models
+│   ├── Frameworks/
+│   ├── SOPs/          #   repeatable processes
+│   ├── Summaries/     #   one summary per ingested source
+│   └── Compiled/      #   saved query answers
+├── System/PKB/        # schema.md (Layer 2 rules) + automation
+├── Memory/            # Claude Code session memory (MEMORY.md index + topic files)
+├── Projects/          # per-project notes + git summaries
+├── People/            # contacts: investors, advisors, customers
+├── Claude Sessions/   # every Claude Code session auto-summarised
+├── Claude Web Chats/  # claude.ai conversations exported nightly
+├── Apple Notes/       # iPhone/Mac notes exported nightly
+├── Daily/ Standups/   # daily + team notes
+└── Inbox/             # quick capture
 ```
 
-**Graph colour groups:**
+### Memory vs Wiki
 
-| Colour | Group |
-|--------|-------|
-| Cyan | MOC hub notes |
-| Green | Memory files |
-| Purple | Projects |
-| Blue | Claude Sessions + Web Chats |
-| Orange | Daily notes + Inbox |
-| Pink | Apple Notes |
-| Amber | People |
-| Red | Airbank |
-| Grey | System |
+These are distinct and complementary. `Memory/MEMORY.md` is the **agent memory index**, loaded at the start of every Claude Code session (who Daniel is, active projects, standing rules, status pointers). `Wiki/index.md` is the **wiki catalog**, read by the query primitive when answering questions against compiled knowledge. Memory is the session bootstrap; the wiki is the compiled corpus.
+
+Four memory types: `user` (preferences, expertise), `feedback` (corrections and validated approaches), `project` (active state, decisions), `reference` (where to find things: Linear team IDs, Supabase project IDs, and so on).
 
 ---
 
-### 2. Airbank Code Vault — Live Codebase Graph
+## Second Vault: Airbank Code Graph
 
 **Location:** `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Airbank/`
-**Auto-synced:** Every 10 minutes via LaunchAgent
+**Auto-synced:** every 10 minutes via LaunchAgent `ca.nodebase.airbank-vault-sync`
 
-174 linked notes — one per source file across Airbank Platform and Airbank Website. Import relationships between files become wikilinks, creating a navigable dependency graph.
-
-```
-Airbank/
-├── Home.md                    # Entry point with last-sync timestamp
-├── Airbank Platform/
-│   ├── Overview.md            # Project hub
-│   ├── app/
-│   │   ├── api/_index.md      # All API routes (red nodes)
-│   │   ├── (auth)/_index.md   # Auth pages (purple nodes)
-│   │   └── [route]/page.md    # Per-page notes
-│   ├── components/
-│   │   ├── _index.md          # Component hub (blue nodes)
-│   │   └── [component].md     # Per-component: exports, imports, description
-│   └── lib/
-│       ├── _index.md          # Library hub (green nodes)
-│       └── [module].md        # Per-module: exports, imports
-└── Airbank Website/
-    └── ...
-```
-
-**Graph colour groups:**
-
-| Colour | Group |
-|--------|-------|
-| Purple | Pages |
-| Blue | Components |
-| Red | API routes |
-| Green | Library |
-| Amber | Hooks |
-| Cyan | Index/hub nodes |
+One linked note per source file across the Airbank repos. Import relationships become wikilinks, producing a navigable dependency graph. The sync script (`~/Airbank/scripts/sync-vault.py`) pulls each repo, walks `app/`, `components/`, `lib/`, `hooks/`, parses imports / exports / component names / HTTP methods, and writes a markdown note per file plus directory index notes.
 
 ---
 
 ## Automation Stack
 
-### Nightly Brain Export
+| Job | Schedule | What it does |
+|---|---|---|
+| Nightly brain-sync | 02:00 daily | Apple Notes export, git history snapshots, **PKB ingest**, **PKB lint**, session summaries |
+| Airbank vault sync | every 10 min | Pull repos, regenerate the code graph, update `Home.md` timestamp |
+| Claude Code memory | per session | Read `MEMORY.md` at start, write new memory files during the session |
 
-**Script:** `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Brain/System/export-brain.sh`
-**Schedule:** Every night via LaunchAgent `ca.nodebase.brain-export`
-
-What it does:
-1. Exports Apple Notes from iCloud to `Brain/Apple Notes/`
-2. Runs `git log` summaries for all repos → `Brain/Projects/Git/`
-3. Saves Claude session summaries to `Brain/Claude Sessions/`
-
-### Airbank Vault Sync
-
-**Script:** `~/Airbank/scripts/sync-vault.py`
-**Schedule:** Every 10 minutes via LaunchAgent `ca.nodebase.airbank-vault-sync`
-**Log:** `~/Airbank/scripts/vault-sync.log`
-
-What it does:
-1. `git pull --ff-only` on Airbank Platform + Airbank Website
-2. Walks all `.ts`/`.tsx` files in `app/`, `components/`, `lib/`, `hooks/`
-3. Parses each file: imports, exports, component names, HTTP methods, description
-4. Generates a linked markdown note per file
-5. Creates directory index notes
-6. Updates `Home.md` with sync timestamp and git status
-
-### Claude Code Memory System
-
-Claude Code reads `Brain/Memory/MEMORY.md` at the start of every session. Memory is written back after each session with new context. Four memory types:
-
-| Type | What it stores |
-|------|---------------|
-| `user` | Daniel's preferences, expertise, working style |
-| `feedback` | Corrections and validated approaches — what to repeat or avoid |
-| `project` | Active project state, decisions, constraints |
-| `reference` | Where to find things (Linear team IDs, Supabase project IDs, etc.) |
+The nightly brain-sync is where ingest and lint run unattended: new `Raw/` drops get compiled into the wiki, then lint reports on the wiki's health.
 
 ---
 
 ## How to Use the Brain
 
-**At session start (automatic):**
-Claude Code reads `MEMORY.md` and relevant project notes before doing any work.
+**At session start (automatic):** Claude Code reads `MEMORY.md` and relevant project notes before doing any work.
 
-**During a session:**
-As new decisions are made or context changes, Claude Code writes new memory files immediately.
+**Add a source:** drop a file into the right `Raw/` subfolder. The nightly ingest compiles it, or run `pkb-process.py --file <path>` now.
 
-**Searching the Brain:**
-- Obsidian quick switcher (`Cmd+O`) — find any note instantly
-- Graph view (`Cmd+G`) — visualise connections between knowledge
-- Dataview plugin — query notes like a database (used in the Airbank hub note)
-- Full-text search (`Cmd+Shift+F`) — search across all 1,000+ notes
+**Ask a question across everything:** `pkb-query.py "question"` (add `--save` to file the answer).
 
-**Adding to the Brain manually:**
-Drop notes in `Brain/Inbox/` — they'll be linked from the next session.
+**Check wiki health:** `pkb-lint.py` (add `--deep` for a contradiction scan). Read `Wiki/lint-report.md`.
+
+**Browse:** Obsidian quick switcher (`Cmd+O`), graph view (`Cmd+G`), Dataview queries, full-text search (`Cmd+Shift+F`).
+
+---
+
+## Reference
+
+Karpathy, A. *LLM-WIKI.md: A Self-Maintaining Personal Knowledge Base Architecture Using Large Language Models. Field Notes on Compilation-Based Knowledge Accumulation.*

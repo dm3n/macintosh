@@ -41,4 +41,7 @@ log "Running repository validation"
 log "Installing macintosh skills"
 bash "$ROOT_DIR/scripts/install-skills.sh"
 
+log "Installing PKB knowledge engine"
+bash "$ROOT_DIR/scripts/install-pkb.sh"
+
 log "Bootstrap complete"
