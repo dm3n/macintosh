@@ -1,8 +1,8 @@
 # Macintosh Skills
 
-A `karpathy` methodology baseline plus 14 specialist Claude Code skills, installed globally at `~/.claude/skills/macintosh/`. Use them via the `Skill` tool or `/skill-name` slash command inside Claude Code.
+A `karpathy` methodology baseline, three engineering disciplines (`debug`, `tdd`, `verify-done`), and 14 specialist Claude Code skills, installed globally at `~/.claude/skills/macintosh/`. Use them via the `Skill` tool or `/skill-name` slash command inside Claude Code.
 
-The [Karpathy guidelines](methodology.md) are the always-on engineering baseline (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution). The specialist skills sit on top of it and fill the gaps: product thinking, design, live testing, security, and release operations.
+The [Karpathy guidelines](methodology.md) are the always-on engineering baseline (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution). The disciplines are the few high-value workflows kept from the old superpowers set: systematic debugging, test-first, and evidence-before-done. The specialist skills sit on top and fill the gaps: product thinking, design, live testing, security, and release operations.
 
 ---
 
@@ -38,6 +38,30 @@ Skills run in the order a sprint runs:
 **File:** `skills/karpathy.md`
 
 The always-on methodology layer for every coding agent: Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution. Tailored to the stack (shadcn/ui, `npx tsc --noEmit` while dev runs, `proxy.ts` not `middleware.ts`). Not usually invoked by hand; it is the default behavior the other skills build on. Invoke explicitly for a refresher or to re-anchor a drifting session.
+
+---
+
+### `/debug`
+**Role:** Engineering discipline
+**File:** `skills/debug.md`
+
+Systematic debugging: reproduce, isolate, root-cause, minimal fix, verify. Prevents symptom-patching and guess-and-check. Invoke on any bug, test failure, or unexpected behavior before proposing a fix.
+
+---
+
+### `/tdd`
+**Role:** Engineering discipline
+**File:** `skills/tdd.md`
+
+Lean test-first for non-trivial logic: red, green, refactor. For bugs, write the reproducing test first. Skips trivial UI glue by design. Pairs with `/debug` and `/qa`.
+
+---
+
+### `/verify-done`
+**Role:** Engineering discipline
+**File:** `skills/verify-done.md`
+
+Evidence before claiming done: run the check, show the output, then claim success. The cross-agent version of Claude Code's built-in `/verify` (works in Codex, Gemini, OpenCode too). Use before committing or opening a PR.
 
 ---
 
