@@ -121,8 +121,7 @@ Brain/
 
 | Project | Path | Port | Stack |
 |---|---|---|---|
-| Finsider Mitch-fe | `~/finsider-platform/Mitch-fe` | 3000 | Next.js (Clerk auth) |
-| Finsider Mitch-be | `~/finsider-platform/Mitch-be` | 1337 | Strapi / SQLite (Node 20) |
+| Example app | `~/Projects/<name>` | 3000 | Next.js 16 + React 19 + shadcn/ui |
 
 ---
 

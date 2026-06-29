@@ -22,22 +22,22 @@ You are a first-time user. You've never seen this product. Your job is to find e
 
 Walk through:
 1. Open the link. What's the first thing you see?
-2. Sign up or authenticate (Clerk). How many steps? Any confusion?
+2. Sign up or authenticate. How many steps? Any confusion?
 3. Land in the app. Is it obvious what to do next?
-4. Find where to upload financial documents. How many clicks from landing?
-5. Upload a document. Does it show progress? Does it confirm success?
-6. Find your analysis status. Is it clear where things stand?
+4. Find where to take the first core action (e.g., upload a file). How many clicks from landing?
+5. Complete that action. Does it show progress? Does it confirm success?
+6. Find your status / progress. Is it clear where things stand?
 
 At each step, record:
 - **Time:** seconds from previous step
 - **Clarity:** is it obvious what to do? (Yes / Needed to think / Confused)
 - **Friction:** what got in the way?
 
-Target: zero confusion points, under 3 minutes from link to first document uploaded.
+Target: zero confusion points, under 3 minutes from link to first core action completed.
 
 ## Core Workflow Audit
 
-**Starting state:** A logged-in user wants to complete the product's core action (run an analysis on a client's financials).
+**Starting state:** A logged-in user wants to complete the product's core action.
 
 Walk through the workflow end to end:
 1. Does the first step ask for the right information in the right order?
@@ -45,11 +45,11 @@ Walk through the workflow end to end:
 3. Are form labels descriptive enough without needing instructions?
 4. Are validation errors helpful? ("Required" is not helpful. "Enter the reporting period as YYYY-MM" is.)
 5. Do optional or branching paths feel natural?
-6. Does the output make sense to a finance professional seeing it for the first time?
+6. Does the output make sense to a user seeing it for the first time?
 
 Time-to-complete: how long does the core workflow take with real data?
 
-Target: a finance professional completes the core workflow without hesitation.
+Target: a user completes the core workflow without hesitation.
 
 ## Dev Setup Audit
 

@@ -131,8 +131,8 @@ Development follows a single methodology across all agents: Think, Plan, Build, 
 | `/plan-design-review` | Design Reviewer | Spec-level design audit before implementation. |
 | `/design-shotgun` | Design Explorer | Generates 4 to 6 UI variants as real shadcn/ui code, iterates to a winner. |
 | `/qa` | QA Lead | Opens a real browser, navigates flows like a user, finds bugs CI misses. |
-| `/devex-review` | DX Auditor | Times borrower portal, apply wizard, and dev setup; finds friction. |
-| `/cso` | Chief Security Officer | OWASP Top 10 + STRIDE, tuned for fintech (PII, mortgage data, Supabase auth, uploads). |
+| `/devex-review` | DX Auditor | Times onboarding, core workflows, and dev setup; finds friction. |
+| `/cso` | Chief Security Officer | OWASP Top 10 + STRIDE for fintech (PII, sensitive data, Supabase auth, uploads). |
 | `/benchmark` | Performance Engineer | Lighthouse, Core Web Vitals, API timings, bundle size, with before/after. |
 | `/retro` | Engineering Lead | Weekly retro across projects: commits, lines, features, next priorities. |
 | `/document-release` | Release Engineer | Git log to release notes in technical (Linear) and stakeholder formats. |

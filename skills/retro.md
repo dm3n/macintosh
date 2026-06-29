@@ -1,6 +1,6 @@
 ---
 name: retro
-description: Run a weekly engineering retrospective across all active Finsider projects. Counts commits, lines shipped, features delivered. Saves report to Brain.
+description: Run a weekly engineering retrospective across your active project repos. Counts commits, lines shipped, features delivered. Saves report to Brain.
 ---
 
 # Retro — Weekly Engineering Retrospective
@@ -12,7 +12,7 @@ Look at what shipped, what didn't, and what to do differently. Takes 2 minutes t
 ```
 /retro                     # this week
 /retro --since 2026-04-07  # custom window
-/retro --project mitch-fe  # single project
+/retro --project [project]  # single project
 ```
 
 ## Process
@@ -22,17 +22,13 @@ Look at what shipped, what didn't, and what to do differently. Takes 2 minutes t
 Run across all active projects:
 
 ```bash
-# Mitch-fe (frontend)
-git -C ~/finsider-platform/Mitch-fe log \
+# For each active repo, run:
+git -C <repo-path> log \
   --since="7 days ago" --oneline --no-merges | wc -l
 
-git -C ~/finsider-platform/Mitch-fe diff \
+git -C <repo-path> diff \
   --stat HEAD~$(git log --since="7 days ago" --oneline | wc -l) HEAD \
   2>/dev/null | tail -1
-
-# Mitch-be (backend)
-git -C ~/finsider-platform/Mitch-be log \
-  --since="7 days ago" --oneline --no-merges
 ```
 
 Also check:
@@ -61,7 +57,7 @@ Check `Brain/Projects/` and recent session summaries for what was planned this w
 
 **5. Set next week's 3 priorities**
 
-Three things only. Not a wishlist, just the three things that matter most for Finsider right now.
+Three things only. Not a wishlist, just the three things that matter most right now.
 
 ## Output Format
 
@@ -76,10 +72,10 @@ Three things only. Not a wishlist, just the three things that matter most for Fi
 - Brain sessions: K
 
 ### What Shipped
-**Mitch-fe (frontend)**
+**[Project A]**
 - [bullet list of meaningful commits]
 
-**Mitch-be (backend)**
+**[Project B]**
 - [bullet list]
 
 **Other**

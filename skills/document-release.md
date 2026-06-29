@@ -12,7 +12,7 @@ Turn git history into communication. Two formats: one for the team, one for stak
 ```
 /document-release                          # since last tag or last week
 /document-release --since v1.2.0           # since a specific tag
-/document-release --project mitch-fe       # single project
+/document-release --project [project]      # single project
 /document-release --audience stakeholder   # only generate stakeholder version
 ```
 
@@ -49,7 +49,7 @@ Full detail, technical language. Every meaningful change is listed.
 
 Plain language, outcome-focused. "We shipped X" not "We added an API endpoint for X." Focus on what changed for the user, not how it was built.
 
-Strip any internal implementation details. These notes may be shared with LOI partners.
+Strip any internal implementation details. These notes may be shared externally.
 
 ## Output Format
 
@@ -74,7 +74,7 @@ Strip any internal implementation details. These notes may be shared with LOI pa
 ### Stakeholder
 
 ```markdown
-## Finsider Product Update — [date]
+## Product Update — [date]
 
 **[Project Name]**
 

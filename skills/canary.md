@@ -29,7 +29,7 @@ For small bug fixes and additive UI changes, a canary is overkill. Ship normally
 
 **1. Define the canary population**
 
-Who sees this first? For Finsider:
+Who sees this first? A typical staged population:
 - **Stage 1:** Internal only (Daniel + any test accounts)
 - **Stage 2:** Design partners / pilot customers, by feature flag or separate environment
 - **Stage 3:** Full rollout
@@ -38,7 +38,7 @@ Who sees this first? For Finsider:
 
 How do you control who sees the new behavior?
 
-Options for Next.js + Clerk:
+Options for Next.js + Supabase:
 - Environment variable toggle (`NEXT_PUBLIC_FEATURE_X=true`)
 - User ID allowlist in a `feature_flags` table
 - A/B split by user ID modulo

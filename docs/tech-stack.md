@@ -11,7 +11,7 @@ Complete catalogue of every tool in the personal and company stack, organised by
 | **Claude Code** | Primary development environment | AI-native terminal IDE — architects, codes, reviews, and deploys. Agents handle full implementation loops. |
 | **Claude (claude.ai)** | Strategy, writing, research | Complex reasoning, pitch drafting, market analysis, long-context work |
 | **Perplexity** | Live internet research | Real-time competitor monitoring, news, market intelligence with citations |
-| **Gemini 3 Flash** | In-product AI | Document extraction, QoE analysis via Vertex AI |
+| **Gemini 3 Flash** | In-product AI | Document extraction and analysis via Vertex AI |
 | **Vertex AI** | AI infrastructure | RAG corpus management, Gemini model serving, GCP integration |
 
 ---

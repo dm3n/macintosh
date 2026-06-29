@@ -1,6 +1,6 @@
 ---
 name: benchmark
-description: Run performance benchmarks on Finsider apps. Lighthouse scores, Core Web Vitals, API response times, bundle size. Compare before/after for any optimization work.
+description: Run performance benchmarks on your apps. Lighthouse scores, Core Web Vitals, API response times, bundle size. Compare before/after for any optimization work.
 ---
 
 # Benchmark — Performance Measurement
@@ -11,8 +11,8 @@ Measure before you optimize. Know your numbers before and after any performance-
 
 ```
 /benchmark http://localhost:3000          # full Lighthouse + vitals
-/benchmark https://staging.finsider.ai   # specific environment
-/benchmark --api /api/workbooks          # API response time only
+/benchmark https://staging.example.com   # specific environment
+/benchmark --api /api/items              # API response time only
 /benchmark --bundle                      # Next.js bundle analysis
 ```
 
@@ -31,11 +31,11 @@ Measure before you optimize. Know your numbers before and after any performance-
 
 **API Response Times**
 
-For key Finsider API routes, measure median and p95:
-- `GET /api/workbooks` — list workbooks
-- `GET /api/workbooks/[id]/cells` — fetch all cells
-- `GET /api/workbooks/[id]/analyze` — SSE stream (time to first event)
-- `POST /api/workbooks/[id]/documents` — document upload
+For key API routes, measure median and p95:
+- `GET /api/items` — list records
+- `GET /api/items/[id]` — fetch a record
+- `GET /api/items/[id]/stream` — SSE stream (time to first event)
+- `POST /api/items/[id]/documents` — document upload
 
 **Bundle Size**
 
@@ -73,8 +73,8 @@ Core Web Vitals:
   CLS: X (target: <0.1)     [PASS/FAIL]
 
 API Response Times (median / p95):
-  GET /api/workbooks: Xms / Xms
-  GET /api/workbooks/[id]/cells: Xms / Xms
+  GET /api/items: Xms / Xms
+  GET /api/items/[id]: Xms / Xms
 
 Bundle:
   First load JS (/): Xkb

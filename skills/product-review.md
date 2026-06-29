@@ -11,7 +11,7 @@ Stop. Before you build, answer the hard questions. This is the conversation that
 
 ```
 /product-review                          # interrogate whatever you're about to build
-/product-review "client invite flow"     # specific feature
+/product-review "user invite flow"       # specific feature
 /product-review --mode reduce            # push scope down aggressively
 /product-review --mode expand            # find what you're missing
 ```
@@ -36,13 +36,13 @@ If the answer is vague or hypothetical, push harder. Real pains have real exampl
 
 **2. Who has this pain most acutely?**
 
-Not "finance professionals." Which finance professionals? Analysts running the numbers? Reviewers signing off? Deal leads? The narrower the answer, the better the solution will be.
+Not "users." Which users specifically? Power users? First-timers? Admins? Reviewers signing off? The narrower the answer, the better the solution will be.
 
-For Finsider: which user are we solving for? The analyst doing the work, the reviewer, or the client receiving the output?
+Name the one user you are solving for, not the whole market: the person doing the work, the person reviewing it, or the person receiving the output.
 
 **3. What does success look like in 30 days?**
 
-Not "users will love it." A specific, measurable outcome. "The document request completion rate goes from 40% to 70%" or "an analyst can review a deal in 10 minutes instead of 45."
+Not "users will love it." A specific, measurable outcome. "The completion rate goes from 40% to 70%" or "a user completes the core task in 10 minutes instead of 45."
 
 If there's no metric, the feature is aesthetic, not strategic.
 
@@ -67,14 +67,14 @@ Synthesize the answers into:
 1. **The real problem statement** (one sentence, specific, measurable)
 2. **The right scope** for this sprint (not the wishlist — the wedge)
 3. **Three alternative approaches** — the one you described, a simpler version, and a more ambitious version
-4. **A recommendation** — which approach, and why, given where Finsider is right now
+4. **A recommendation** — which approach, and why, given where you are right now
 
-## Finsider Context
+## Guiding Principles
 
 Apply to every product decision:
 - Narrow beats broad. Solve one workflow well before widening.
-- Build for the finance professionals actually using Mitch today.
-- Every feature should either win a customer or help a user deliver analysis faster. If it doesn't, it's a distraction.
+- Build for the users actually using the product today.
+- Every feature should either win a customer or help a user accomplish their goal faster. If it doesn't, it's a distraction.
 - Speed of learning > feature completeness. Ship the smallest thing that reveals whether the hypothesis is true.
 
 ## Output Format

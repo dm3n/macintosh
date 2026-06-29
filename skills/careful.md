@@ -64,7 +64,7 @@ If the operation cannot be reversed and something goes wrong, say so immediately
 - What state the system is in now
 - What the options are
 
-## Finsider-Specific Checks
+## Stack-Specific Checks
 
 For database changes:
 - All migrations are additive first (add columns before dropping old ones)

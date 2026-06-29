@@ -12,7 +12,7 @@ Open a real browser, walk through the app like a user, find what CI doesn't catc
 ```
 /qa https://staging.url.com
 /qa http://localhost:3000
-/qa https://staging.finsider.ai   # specific environment
+/qa https://staging.example.com   # specific environment
 ```
 
 ## What This Does
@@ -23,11 +23,11 @@ You are the QA lead. Your job is to find bugs that pass CI but break in producti
 
 **1. Identify key flows**
 
-Before opening the browser, list the flows you will test based on what changed. For Finsider (Mitch):
+Before opening the browser, list the flows you will test based on what changed. For a typical app:
 
-- Auth: Clerk sign-in / sign-up, session refresh
-- Core analysis: workbook creation, financial document upload, analysis SSE stream, cell editing, export
-- Reports and data room: viewing, filtering, downloads
+- Auth: sign-in / sign-up, session refresh
+- Core flow: record creation, file upload, processing/SSE stream, inline editing, export
+- Reports and data views: viewing, filtering, downloads
 
 If given a specific path, focus on that feature and its dependencies.
 
@@ -74,10 +74,10 @@ Status: PASS / FAIL / PASS WITH NOTES
 
 ## Stack-Specific Checks
 
-Always verify these for Finsider projects:
+Always verify these for your projects:
 
-- **Auth:** Clerk session cookie present; redirect to login on 401
-- **SSE streams:** `/api/workbooks/[id]/analyze` — progress events firing, no hung connections
+- **Auth:** session cookie present; redirect to login on 401
+- **SSE streams:** long-running endpoints fire progress events, no hung connections
 - **File upload:** drag-and-drop + click-to-browse both work; progress indicator shows
 - **shadcn/ui:** no raw HTML form elements — every input, button, select must be a shadcn component
 - **Mobile:** resize to 375px width and verify nothing breaks

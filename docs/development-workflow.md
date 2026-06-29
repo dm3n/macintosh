@@ -50,8 +50,8 @@ Before merge:
 ## Local Dev References
 
 ```bash
-# Finsider (Mitch-fe)
-cd ~/finsider-platform/Mitch-fe
+# your project
+cd ~/Projects/<name>
 npm run dev
 
 # ROGI

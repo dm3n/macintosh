@@ -17,7 +17,7 @@ If you find a raw `<input>`, `<button>`, `<select>`, `<textarea>`, or `<form>` e
 
 ```
 /design-review                          # review all changed files
-/design-review components/workbook/     # review specific directory
+/design-review components/dashboard/    # review specific directory
 /design-review app/dashboard/           # review specific page
 ```
 

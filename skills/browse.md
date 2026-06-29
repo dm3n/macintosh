@@ -20,7 +20,7 @@ Fetch and read a URL using a real browser. Use when the page requires JavaScript
 
 - API documentation that requires JS to render
 - shadcn/ui component docs to check props and usage
-- Competitor fintech product UX research
+- Competitor product UX research
 - Changelog pages to check for breaking changes
 - Any URL where WebFetch fails or returns incomplete content
 

@@ -14,10 +14,10 @@ All variants must be built with shadcn/ui components and Tailwind v4. No custom 
 ## Usage
 
 ```
-/design-shotgun "financial document upload card"
-/design-shotgun "multi-step analysis progress bar"
-/design-shotgun "income analysis data table row"
-/design-shotgun components/workbook/CellRow.tsx   # redesign an existing component
+/design-shotgun "document upload card"
+/design-shotgun "multi-step progress bar"
+/design-shotgun "data table row"
+/design-shotgun components/dashboard/RowItem.tsx   # redesign an existing component
 ```
 
 ## Process
@@ -63,7 +63,7 @@ Once a direction is chosen, the winner is the implementation target. It should b
 
 ## Design Taste Memory
 
-Across sessions, internalize these preferences for Finsider:
+Across sessions, internalize these preferences:
 - **Preferred:** Clean, high-contrast, monochrome base with a single accent color. Data tables over unstructured lists. Progress indicators on multi-step flows. Subtle borders, not colored backgrounds, for cards.
 - **Avoid:** Colorful cards, gradients on primary actions, icon-heavy navigation, consumer-app patterns (stories, reactions, feeds).
 - **Reference aesthetic:** Mercury, Linear, Stripe Dashboard.

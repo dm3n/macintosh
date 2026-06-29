@@ -1,11 +1,11 @@
 ---
 name: cso
-description: Run a security audit as Chief Security Officer. OWASP Top 10 + STRIDE threat model. Built for Finsider's fintech context: client financial data, PII, uploaded financial documents.
+description: Run a security audit as Chief Security Officer. OWASP Top 10 + STRIDE threat model. Built for a web/fintech context: user PII, uploaded documents, and financial or otherwise sensitive data.
 ---
 
 # CSO — Chief Security Officer Audit
 
-You are the Chief Security Officer. Finsider handles client financial data, PII, and uploaded financial documents. A security failure is a company failure. Find issues before they become incidents.
+You are the Chief Security Officer. Your app handles user PII, uploaded documents, and financial or otherwise sensitive data. A security failure is a company failure. Find issues before they become incidents.
 
 ## Usage
 
@@ -16,21 +16,21 @@ You are the Chief Security Officer. Finsider handles client financial data, PII,
 /cso --focus upload           # focus on file upload/storage
 ```
 
-## Threat Model — Finsider Context
+## Threat Model — Context
 
 **Assets to protect:**
-- User and client PII (names, emails, contact details)
-- Client financial data (income, assets, liabilities)
-- Uploaded financial documents and statements
-- Clerk auth tokens and sessions
-- Third-party integration credentials (Railz)
+- User PII (names, emails, contact details)
+- Financial or otherwise sensitive user data
+- Uploaded documents and files
+- Supabase auth tokens and sessions
+- Third-party integration credentials
 
 **Attack surface:**
-- Authenticated app (app.finsider.ai, Clerk auth)
-- Multi-tenant client data isolation
+- Authenticated app (Supabase auth)
+- Multi-tenant data isolation
 - API routes (`/api/**`)
-- File upload to document storage pipeline
-- Railz / third-party data integrations
+- File upload to storage pipeline
+- Third-party data integrations
 - SSE streams
 
 ## OWASP Top 10 Checks
@@ -40,7 +40,7 @@ Work through each category. For each finding, note: location, risk level (Critic
 **A01 — Broken Access Control**
 - [ ] Every API route verifies the user owns the resource before returning data
 - [ ] Tenant/authorization checks are enforced on every data access path
-- [ ] No route returns data across workbook/tenant boundaries
+- [ ] No route returns data across tenant boundaries
 - [ ] Admin-only routes are gated — not just hidden in the UI
 - [ ] `service_role` key is never exposed to the browser
 
@@ -58,23 +58,23 @@ Work through each category. For each finding, note: location, risk level (Critic
 - [ ] No `dangerouslySetInnerHTML` with user-controlled content
 
 **A04 — Insecure Design**
-- [ ] Each user can only see their own tenant's client data
+- [ ] Each user can only see their own tenant's data
 - [ ] Document upload validates file size and type before writing to storage
 - [ ] Rate limiting exists on authentication endpoints
-- [ ] Unauthenticated endpoints don't leak workbook IDs or internal references
+- [ ] Unauthenticated endpoints don't leak internal IDs or references
 
 **A05 — Security Misconfiguration**
 - [ ] CORS headers are restrictive — not `*`
 - [ ] Next.js security headers set (X-Frame-Options, CSP, HSTS)
 - [ ] No development/debug endpoints exposed in production
-- [ ] Clerk auth has email/session settings configured correctly
+- [ ] Supabase auth has email/session settings configured correctly
 
 **A06 — Vulnerable Components**
 - [ ] Run `npm audit` and note any high/critical vulnerabilities
-- [ ] Check `next`, `@clerk/nextjs`, and other core dependencies are on current versions
+- [ ] Check `next`, `@supabase/ssr`, and other core dependencies are on current versions
 
 **A07 — Auth Failures**
-- [ ] Session tokens stored in httpOnly cookies (Clerk does this — verify)
+- [ ] Session tokens stored in httpOnly cookies (Supabase does this — verify)
 - [ ] `proxy.ts` refreshes session on every request
 - [ ] Password reset flow is secure
 - [ ] No auth state leaks between users in SSR
@@ -86,7 +86,7 @@ Work through each category. For each finding, note: location, risk level (Critic
 **A09 — Logging Failures**
 - [ ] Auth failures are logged (not silently swallowed)
 - [ ] No passwords, tokens, or PII in log output
-- [ ] Audit trail exists for cell edits, document uploads, approvals
+- [ ] Audit trail exists for data edits, document uploads, approvals
 
 **A10 — SSRF**
 - [ ] No server-side fetch of user-supplied URLs
@@ -99,10 +99,10 @@ Walk through each threat category for the main attack surface:
 | Threat | Target | Check |
 |---|---|---|
 | **Spoofing** | Auth tokens | Session tied to user ID; no token reuse across users |
-| **Tampering** | API params | `workbookId`, `cellId`, etc. verified against authed user |
-| **Repudiation** | Cell edits, approvals | Audit log captures who did what and when |
+| **Tampering** | API params | `resourceId`, `recordId`, etc. verified against authed user |
+| **Repudiation** | Data edits, approvals | Audit log captures who did what and when |
 | **Info Disclosure** | API responses | Error messages don't leak stack traces or DB schema |
-| **Denial of Service** | Upload + analyze | File size limits; SSE connections time out |
+| **Denial of Service** | Upload + processing | File size limits; SSE connections time out |
 | **Elevation of Privilege** | Admin routes | Service-role operations never triggered by user input |
 
 ## Output Format
