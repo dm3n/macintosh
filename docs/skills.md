@@ -49,6 +49,22 @@ The universal architecture for every agent loop built in this setup — schedule
 
 ---
 
+### `/grill`
+**Role:** Requirements discipline
+**File:** `skills/grill.md`
+
+Structured requirements interrogation before any non-trivial build: interview in rounds (outcome, scope boundary, edge cases, priorities, verification, constraints), push back on conflicts, and exit by writing the `contract.md` that the loops architecture grades against. Adapted from Matt Pocock's grill-me/grilling skills.
+
+---
+
+### `/domain-modeling`
+**Role:** Knowledge discipline
+**File:** `skills/domain-modeling.md`
+
+Create and maintain a `DOMAIN.md` per repo: glossary of load-bearing terms, look-alike disambiguation, invariants, entity lifecycles, and documented warts, kept under ~150 lines and updated in the same PR that changes a meaning. Stops agents re-deriving the domain every session. Adapted from Matt Pocock's domain-modeling skill.
+
+---
+
 ### `/debug`
 **Role:** Engineering discipline
 **File:** `skills/debug.md`
