@@ -1,4 +1,4 @@
-# Macintosh
+<h1 align="center">Macintosh</h1>
 
 Macintosh is my personal AI engineering OS: the complete, end-to-end system I use to build AI companies like [Finsider](https://finsider.ai). It spans a local multi-agent coding workstation, a self-maintaining knowledge brain, a 14-skill Claude Code team, a self-hosted personal cloud running approval-gated automation agents, and a Linux AI/security node. This README is the full technical overview of how those pieces fit together.
 
