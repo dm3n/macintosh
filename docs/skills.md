@@ -41,6 +41,14 @@ The always-on methodology layer for every coding agent: Think Before Coding, Sim
 
 ---
 
+### `/loops`
+**Role:** Loop architecture baseline
+**File:** `skills/loops.md`
+
+The universal architecture for every agent loop built in this setup — scheduled routines, automation pipelines, unattended runners. Nine rules from Karpathy's LOOPS.md field notes: write the loop not the prompt, separate planner/generator/evaluator roles, negotiate the contract first, state on disk in ≤3 files, let the loop restart, score the subjective with a written rubric, read the traces, delete the harness, follow the moving bottleneck. Companion to `/karpathy`: that governs how agents code, this governs how agents build things that run without supervision.
+
+---
+
 ### `/debug`
 **Role:** Engineering discipline
 **File:** `skills/debug.md`
