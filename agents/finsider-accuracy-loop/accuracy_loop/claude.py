@@ -127,6 +127,9 @@ class ClaudeRunner:
             except ProcessLookupError:
                 pass
         finally:
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None and not stream.closed:
+                    stream.close()
             self.active_process = None
 
     def run(self, phase, prompt, schema, cwd):
