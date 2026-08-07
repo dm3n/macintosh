@@ -49,3 +49,14 @@ Return only the structured result required by the supplied JSON schema.
   verifier inherit Railz's duplicate-row bug and stop catching it. C47 did exactly this and was
   reverted (#1094/#1095). Until feat/scrum-711 merges, BS mismatches on reconstruct-affected
   workspaces are the INTENDED honest signal, not a drivable verifier flaw.
+
+## Standing directive (Daniel, 2026-08-07): eliminate mismatches, no new verifiers
+
+Verifier-category coverage is SUFFICIENT. Do not propose or build new verifier categories
+unless an existing one regresses. Every spec cycle targets exactly one thing: reducing the
+fleet's real mismatch count toward zero on every workspace. Priority order:
+1. Instrument dishonesty that manufactures phantom mismatch rows (kill the phantom).
+2. Real data/code defects behind mismatch rows (fix the defect; CPA-flag if a number moves).
+3. Decomposing an unexplained mismatch family into either 1 or 2 (e.g. Teal ws124's 163 rows).
+The success metric of every iteration is the before/after mismatch count of the targeted
+workspace family, stated in the ledger line.
