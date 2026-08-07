@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.finsider.accuracy-loop</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/dm3n/lab/homelab-macintosh/agents/finsider-accuracy-loop/run.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/dm3n/finsider-platform</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>ExitTimeOut</key>
+    <integer>30</integer>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/dm3n</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <key>FINSIDER_ACCURACY_RUNTIME</key>
+        <string>/Users/dm3n/finsider-platform/.accuracy-supervisor</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/dm3n/Library/Logs/Finsider/accuracy-supervisor.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/dm3n/Library/Logs/Finsider/accuracy-supervisor.log</string>
+</dict>
+</plist>
