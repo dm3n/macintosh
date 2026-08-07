@@ -173,7 +173,10 @@ RECEIPT_SCHEMA = {
     "type": "object",
     "required": ["kind", "id", "url", "status"],
     "properties": {
-        "kind": {"enum": ["verification_run", "pull_request", "jira", "other"]},
+        "kind": {"enum": [
+            "verification_run", "roster_snapshot", "source_snapshot", "ui_probe",
+            "export_artifact", "test_run", "pull_request", "jira", "other",
+        ]},
         "id": {"type": "string"},
         "url": {"type": ["string", "null"]},
         "status": {"type": "string"},
@@ -243,7 +246,8 @@ JUDGE_SCHEMA = {
     "type": "object",
     "required": [
         "verdict", "score", "summary", "hard_gates", "findings", "rework_instructions",
-        "verified_evidence", "coverage_updates", "blockers", "wait_seconds",
+        "verified_evidence", "coverage_updates", "blockers", "resolved_blocker_ids",
+        "wait_seconds",
     ],
     "properties": {
         "verdict": {"enum": ["ACCEPT", "REJECT", "BLOCKED"]},
@@ -267,6 +271,7 @@ JUDGE_SCHEMA = {
         "verified_evidence": {"type": "array", "items": {"type": "string"}},
         "coverage_updates": {"type": "object"},
         "blockers": {"type": "array", "items": BLOCKER_SCHEMA},
+        "resolved_blocker_ids": {"type": "array", "items": {"type": "string"}},
         "wait_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
         "full_sweep": FULL_SWEEP_SCHEMA,
     },
@@ -465,6 +470,42 @@ class Supervisor:
                 by_id[blocker["id"]] = copy.deepcopy(blocker)
         state["blockers"] = list(by_id.values())
 
+    def _resolve_accepted_blockers(self, state, result):
+        resolved = set(result.get("resolved_blocker_ids", []))
+        state["blockers"] = [
+            blocker for blocker in state.get("blockers", [])
+            if blocker.get("id") not in resolved
+        ]
+
+    def _full_sweep_is_corroborated(self, state, judge_sweep, result):
+        build = state.get("build_result") or {}
+        build_sweep = build.get("full_sweep")
+        if not isinstance(build_sweep, dict) or build_sweep != judge_sweep:
+            return False
+        required_ids = {judge_sweep["authoritative_roster"]["id"]}
+        required_ids.update(
+            workspace["verification_id"]
+            for workspace in judge_sweep["workspace_roster"]
+            if workspace.get("lifecycle") == "active"
+        )
+        evidence_lists = []
+        for proof in judge_sweep["domains"].values():
+            evidence_lists.append(proof["evidence"])
+        scope = judge_sweep["scope"]
+        for key in ("periods", "layers", "dimensions"):
+            evidence_lists.append(scope[key]["evidence"])
+        for proof in scope["surfaces"].values():
+            evidence_lists.append(proof["evidence"])
+        for evidence in evidence_lists:
+            required_ids.update(item["id"] for item in evidence)
+        receipt_ids = {
+            receipt.get("id")
+            for receipt in build.get("receipts", [])
+            if receipt.get("status") == "complete"
+        }
+        judge_ids = set(result.get("verified_evidence", []))
+        return required_ids.issubset(receipt_ids) and required_ids.issubset(judge_ids)
+
     def _judge_accepts(self, state, result):
         gates = result.get("hard_gates", {})
         required_gates = (
@@ -609,13 +650,20 @@ class Supervisor:
         if accepted:
             delivered_worktree = self._worktree_from_state(state)
             delivered_build = state.get("build_result") or {}
+            self._resolve_accepted_blockers(state, result)
             self._apply_coverage(state, result.get("coverage_updates"))
             full_sweep = result.get("full_sweep")
             completed = False
-            if isinstance(full_sweep, dict):
+            if isinstance(full_sweep, dict) and self._full_sweep_is_corroborated(
+                state, full_sweep, result
+            ):
                 audited_sweep = copy.deepcopy(full_sweep)
                 audited_sweep["judge_verdict"] = "ACCEPT"
                 completed = record_accepted_sweep(state, audited_sweep)
+            elif isinstance(full_sweep, dict):
+                state["last_sweep_errors"] = [
+                    "full sweep lacked matching build receipts and judge reproduction"
+                ]
             if completed:
                 state["phase"] = "judge"
                 state["worktree"] = None

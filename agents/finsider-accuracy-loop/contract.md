@@ -135,3 +135,5 @@ Every evidence entry is structured as `{kind, id, source, observed_at, workspace
 The second clean sweep must retain the same authoritative roster, advance its observation time without regressing global watermarks, use a new authoritative roster snapshot, use a new verification ID with a later verification timestamp for every active workspace, and use no evidence identity from the first sweep. A replay, stale remote branch, aggregate count, opaque evidence string, or roster change cannot complete the sequence.
 
 The supervisor, not an agent, decides whether two accepted sweeps meet completion.
+
+For either sweep to count, the build candidate and judge reproduction must be identical. Completed build receipts and the judge's independently verified evidence list must both contain the authoritative roster snapshot ID, every active workspace verification ID, and every structured proof evidence ID.

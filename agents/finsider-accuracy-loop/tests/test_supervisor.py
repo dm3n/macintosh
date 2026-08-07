@@ -63,7 +63,33 @@ def build_result(full_sweep=None):
     }
     if full_sweep is not None:
         result["full_sweep"] = full_sweep
+        result["receipts"] = proof_receipts(full_sweep)
     return result
+
+
+def proof_ids(sweep):
+    identities = {sweep["authoritative_roster"]["id"]}
+    identities.update(
+        item["verification_id"]
+        for item in sweep["workspace_roster"] if item["lifecycle"] == "active"
+    )
+    evidence_lists = [proof["evidence"] for proof in sweep["domains"].values()]
+    evidence_lists.extend(sweep["scope"][key]["evidence"] for key in (
+        "periods", "layers", "dimensions",
+    ))
+    evidence_lists.extend(
+        proof["evidence"] for proof in sweep["scope"]["surfaces"].values()
+    )
+    for evidence in evidence_lists:
+        identities.update(item["id"] for item in evidence)
+    return identities
+
+
+def proof_receipts(sweep):
+    return [
+        {"kind": "other", "id": identity, "url": None, "status": "complete"}
+        for identity in sorted(proof_ids(sweep))
+    ]
 
 
 def delivered_code_result():
@@ -99,10 +125,12 @@ def judge_result(verdict="ACCEPT", full_sweep=None):
         "verified_evidence": ["judge:evidence"],
         "coverage_updates": {},
         "blockers": [],
+        "resolved_blocker_ids": [],
         "wait_seconds": 0,
     }
     if full_sweep is not None:
         result["full_sweep"] = full_sweep
+        result["verified_evidence"] = sorted(proof_ids(full_sweep))
     return result
 
 
@@ -321,6 +349,27 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(state["status"], "complete")
         self.assertEqual(len(state["clean_sweeps"]), 2)
 
+    def test_full_sweep_without_matching_receipts_cannot_complete(self):
+        sweep = complete_sweep("sweep-1")
+        build = build_result(sweep)
+        build["receipts"] = [{
+            "kind": "verification_run", "id": "not-the-proof", "url": None,
+            "status": "complete",
+        }]
+        supervisor, _ = self.supervisor([
+            spec_result("proof"), build, judge_result("ACCEPT", sweep),
+        ])
+
+        for _ in range(3):
+            supervisor.step()
+
+        state = load_state(supervisor.state_path)
+        self.assertEqual(state["clean_sweeps"], [])
+        self.assertEqual(
+            state["last_sweep_errors"],
+            ["full sweep lacked matching build receipts and judge reproduction"],
+        )
+
     def test_agent_failure_keeps_same_phase_and_sets_retry(self):
         supervisor, runner = self.supervisor([AgentFailure("rate limit", transient=True)])
 
@@ -408,6 +457,22 @@ class SupervisorTests(unittest.TestCase):
             [item["id"] for item in load_state(supervisor.state_path)["blockers"]],
             ["ACC-KEEP"],
         )
+
+    def test_accepted_judge_can_resolve_a_named_existing_blocker(self):
+        verdict = judge_result("ACCEPT")
+        verdict["resolved_blocker_ids"] = ["ACC-OLD"]
+        supervisor, _ = self.supervisor([spec_result("proof"), build_result(), verdict])
+        supervisor.ensure_runtime()
+        state = load_state(supervisor.state_path)
+        state["blockers"] = [
+            {"id": "ACC-OLD", "summary": "Old", "owner": "Ops", "evidence_needed": ["sync"]}
+        ]
+        save_state(supervisor.state_path, state)
+
+        for _ in range(3):
+            supervisor.step()
+
+        self.assertEqual(load_state(supervisor.state_path)["blockers"], [])
 
     def test_operational_runtime_error_retries_same_phase(self):
         runner = ScriptedRunner([spec_result("code")])

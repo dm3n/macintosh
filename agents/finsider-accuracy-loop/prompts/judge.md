@@ -22,6 +22,8 @@ For coverage updates, mark a domain `proved` only with reproducible evidence tha
 
 Include `full_sweep` only if you independently query a fresh authoritative roster snapshot from `finsider-verification:list_workspaces` and verify every active workspace, all supported history, all required layers and dimensions, every required surface, all 20 domains, a fresh onboarding gate, zero mismatches, zero errors, zero unknowns, zero stale items, and zero unresolved surfaces. Every active workspace needs an immutable completed verification ID observed after its own latest sync and the latest deployment. Every proof must use structured evidence with source/run IDs and complete scope. Reusing a roster snapshot or verification ID is not a second sweep. Explained, ticketed, held, unsupported, externally owned, or otherwise unresolved blockers disqualify completion.
 
-Every blocker uses a stable `{id, summary, owner, evidence_needed}` object.
+Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Put a blocker ID in `resolved_blocker_ids` only when the accepted contract supplies the direct evidence it required.
+
+For a full sweep, reproduce the builder's sweep object exactly after independent verification and list every roster snapshot, workspace verification, and structured evidence ID in `verified_evidence`. A mismatch between the build candidate, receipts, and your reproduction disqualifies the sweep.
 
 Return only the structured result required by the supplied JSON schema.
