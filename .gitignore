@@ -18,6 +18,10 @@ dist/
 vault-sync.log
 vault-sync.err
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Secrets
 credentials.json
 *-credentials.json
