@@ -314,7 +314,9 @@ def commit_changes(arguments):
     environment = _safe_test_environment()
     _run(["git", "add", "--all"], cwd=cwd, environment=environment, timeout=60)
     return _run([
-        "git", "-c", "user.name=Daniel Edgar", "-c", "user.email=daniel@nodebase.ca",
+        # GitHub email privacy (GH007) rejects pushes exposing the real address;
+        # commits must use the account's noreply email.
+        "git", "-c", "user.name=dm3n", "-c", "user.email=79768139+dm3n@users.noreply.github.com",
         "-c", "core.hooksPath=/dev/null", "commit", "--no-verify", "-m", message,
     ], cwd=cwd, environment=environment, timeout=120)
 
