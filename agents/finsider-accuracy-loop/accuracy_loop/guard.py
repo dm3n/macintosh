@@ -8,7 +8,7 @@ import sys
 
 
 READ_ONLY_PATTERNS = (
-    r"\bgit\s+(?:add|commit|push|merge|rebase|reset|clean|checkout|switch)\b",
+    r"\bgit(?:\s+-C\s+\S+)?\s+(?:add|commit|push|merge|rebase|reset|clean|checkout|switch)\b",
     r"\bgit\s+worktree\s+(?:add|remove|move|prune)\b",
     r"\bgh\s+pr\s+(?:create|merge|close|edit|ready|comment|review)\b",
     r"\bgh\s+issue\s+(?:create|edit|close|comment)\b",
@@ -21,8 +21,8 @@ UNIVERSAL_DENY_PATTERNS = (
     r"\bgh\s+release\s+(?:create|delete|upload)\b",
     r"\bgh\s+api\b.*(?:-X|--method)\s*(?:POST|PUT|PATCH|DELETE)\b",
     r"\bgh\s+api\b.*(?:-f|--field|-F|--raw-field|--input)\b",
-    r"\bgit\s+push\b.*(?:--force(?:-with-lease)?|-f\b)",
-    r"\bgit\s+push\b.*(?:\bmain\b|\bmaster\b|\bdevelopment\b)",
+    r"\bgit(?:\s+-C\s+\S+)?\s+push\b.*(?:--force(?:-with-lease)?|-f\b)",
+    r"\bgit(?:\s+-C\s+\S+)?\s+push\b.*(?:\bmain\b|\bmaster\b|\bdevelopment\b)",
     r"\bvercel\b.*(?:\bdeploy\b|--prod\b)",
     r"\baz\b.*\b(?:deploy|deployment)\b",
     r"\baz\s+rest\b.*--method\s*(?:post|put|patch|delete)\b",
@@ -31,11 +31,33 @@ UNIVERSAL_DENY_PATTERNS = (
     r"\b(?:terraform|tofu)\s+apply\b",
     r"\b(?:npm|pnpm|yarn)\s+publish\b",
     r"\bdocker\s+push\b",
-    r"\bcurl\b.*(?:-X|--request)\s*(?:POST|PUT|PATCH|DELETE)\b",
-    r"\bcurl\b.*(?:--data(?:-binary|-raw|-urlencode)?|-d\b|--form|-F\b)",
+    r"\bcurl\b",
     r"\bpsql\b.*\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b",
     r"\bredis-cli\b.*\b(?:SET|DEL|FLUSHALL|FLUSHDB|UNLINK|RENAME)\b",
+    r"\b(?:bash|sh|zsh)\s+-c\b",
+    r"\bpython(?:3(?:\.\d+)?)?\s+-c\b",
+    r"\b(?:eval|source)\b",
+    r"[`]|\$\(",
+    r"[;|]",
 )
+
+READ_BUILTIN_TOOLS = {
+    "Read", "Glob", "Grep", "Bash", "WebFetch", "WebSearch",
+}
+BUILD_BUILTIN_TOOLS = READ_BUILTIN_TOOLS | {"Edit", "Write", "NotebookEdit"}
+VERIFICATION_READ_TOOLS = {
+    "mcp__finsider-verification__list_workspaces",
+    "mcp__finsider-verification__get_verification_run",
+    "mcp__finsider-verification__get_reconciliation_summary",
+    "mcp__finsider-verification__get_discrepancies",
+    "mcp__finsider-verification__get_balance_sheet_checks",
+    "mcp__finsider-verification__get_pnl_identities",
+}
+VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS | {
+    "mcp__finsider-verification__trigger_verification_run",
+    "mcp__finsider-verification__scan_discrepancies",
+    "mcp__finsider-verification__reconcile_deletions",
+}
 
 
 def _matches(patterns, command):
@@ -56,17 +78,47 @@ def blocked_reason(phase, command):
     return None
 
 
+def tool_blocked_reason(phase, tool_name, tool_input):
+    builtins = BUILD_BUILTIN_TOOLS if phase in ("build", "rework") else READ_BUILTIN_TOOLS
+    if tool_name == "Bash":
+        return blocked_reason(phase, tool_input.get("command", ""))
+    if tool_name in builtins:
+        return None
+    if not tool_name.startswith("mcp__"):
+        return "tool is outside the phase allowlist"
+    if phase in ("spec", "judge"):
+        if tool_name in VERIFICATION_READ_TOOLS:
+            return None
+        return "%s phase permits only read-only verification MCP tools" % phase
+    if tool_name in VERIFICATION_BUILD_TOOLS:
+        if (
+            tool_name == "mcp__finsider-verification__reconcile_deletions"
+            and tool_input.get("apply") is not False
+        ):
+            return "deletion reconciliation must explicitly use apply=false"
+        return None
+    lowered = tool_name.lower()
+    if lowered.startswith("mcp__atlassian__"):
+        if any(token in lowered for token in ("delete", "remove", "archive", "admin")):
+            return "destructive Atlassian action is not allowed"
+        if any(token in lowered for token in (
+            "search", "get", "list", "createissue", "create_issue", "updateissue",
+            "update_issue", "comment", "transitionissue", "transition_issue",
+        )):
+            return None
+    return "MCP tool is outside the build-phase allowlist"
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
     except ValueError:
         print("blocked by Finsider accuracy safety rail: malformed hook input", file=sys.stderr)
         return 2
-    if payload.get("tool_name") != "Bash":
-        return 0
-    command = payload.get("tool_input", {}).get("command", "")
     phase = os.environ.get("FINSIDER_ACCURACY_PHASE", "unknown")
-    reason = blocked_reason(phase, command)
+    reason = tool_blocked_reason(
+        phase, payload.get("tool_name", ""), payload.get("tool_input", {})
+    )
     if reason:
         print("blocked by Finsider accuracy safety rail: %s" % reason, file=sys.stderr)
         return 2

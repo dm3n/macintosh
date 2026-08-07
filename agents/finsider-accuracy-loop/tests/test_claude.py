@@ -4,6 +4,8 @@ import stat
 import sys
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 
 
@@ -52,6 +54,12 @@ class ClaudeRunnerTests(unittest.TestCase):
         self.assertIn("--json-schema", command)
         self.assertIn("--settings", command)
         self.assertIn("--disallowedTools", command)
+        self.assertIn("--allowedTools", command)
+        self.assertIn("--permission-mode", command)
+        self.assertEqual(command[command.index("--permission-mode") + 1], "dontAsk")
+        self.assertNotIn("--dangerously-skip-permissions", command)
+        settings = json.loads(command[command.index("--settings") + 1])
+        self.assertEqual(settings["hooks"]["PreToolUse"][0]["matcher"], "*")
 
     def test_real_child_receives_prompt_without_api_key_and_writes_trace(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -67,19 +75,28 @@ class ClaudeRunnerTests(unittest.TestCase):
                         "structured_output": {
                             "decision": "proof" if prompt == "prove it" else "wrong",
                             "api_key_present": "ANTHROPIC_API_KEY" in os.environ,
+                            "deploy_token_present": "VERCEL_TOKEN" in os.environ,
+                            "database_url_present": "DATABASE_URL" in os.environ,
                         }
                     }
                     print(json.dumps(result))
                 """))
             os.chmod(fake_claude, os.stat(fake_claude).st_mode | stat.S_IXUSR)
             traces = os.path.join(directory, "traces")
-            env = dict(os.environ, ANTHROPIC_API_KEY="must-not-leak")
+            env = dict(
+                os.environ,
+                ANTHROPIC_API_KEY="must-not-leak",
+                VERCEL_TOKEN="must-not-leak",
+                DATABASE_URL="must-not-leak",
+            )
             runner = ClaudeRunner(claude_bin=fake_claude, trace_dir=traces, environ=env)
 
             result = runner.run("spec", "prove it", SCHEMA, directory)
 
             self.assertEqual(result["decision"], "proof")
             self.assertFalse(result["api_key_present"])
+            self.assertFalse(result["deploy_token_present"])
+            self.assertFalse(result["database_url_present"])
             self.assertEqual(len(os.listdir(traces)), 2)
 
     def test_timeout_is_transient_and_terminates_child(self):
@@ -95,6 +112,37 @@ class ClaudeRunnerTests(unittest.TestCase):
 
             self.assertTrue(failure.exception.transient)
             self.assertIn("timed out", str(failure.exception))
+            self.assertIsNone(runner.active_process)
+
+    def test_concurrent_termination_is_transient_without_process_race(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fake_claude = os.path.join(directory, "fake-claude")
+            with open(fake_claude, "w") as executable:
+                executable.write("#!/bin/sh\nsleep 30\n")
+            os.chmod(fake_claude, os.stat(fake_claude).st_mode | stat.S_IXUSR)
+            runner = ClaudeRunner(claude_bin=fake_claude, trace_dir=directory)
+            observed = []
+
+            def invoke():
+                try:
+                    runner.run("build", "input", SCHEMA, directory)
+                except Exception as error:
+                    observed.append(error)
+
+            thread = threading.Thread(target=invoke)
+            thread.start()
+            deadline = time.time() + 5
+            while runner.active_process is None and time.time() < deadline:
+                time.sleep(0.01)
+
+            runner.terminate()
+            thread.join(timeout=5)
+
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(len(observed), 1)
+            self.assertIsInstance(observed[0], AgentFailure)
+            self.assertTrue(observed[0].transient)
+            self.assertNotIsInstance(observed[0], AttributeError)
             self.assertIsNone(runner.active_process)
 
 

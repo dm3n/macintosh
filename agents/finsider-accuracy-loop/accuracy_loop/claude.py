@@ -17,8 +17,43 @@ PRODUCTION_MUTATION_TOOLS = (
     "mcp__finsider-verification__remove_all_discrepancies",
     "mcp__finsider-verification__reconcile_deletions",
 )
+VERIFICATION_READ_TOOLS = (
+    "mcp__finsider-verification__list_workspaces",
+    "mcp__finsider-verification__get_verification_run",
+    "mcp__finsider-verification__get_reconciliation_summary",
+    "mcp__finsider-verification__get_discrepancies",
+    "mcp__finsider-verification__get_balance_sheet_checks",
+    "mcp__finsider-verification__get_pnl_identities",
+)
+VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS + (
+    "mcp__finsider-verification__trigger_verification_run",
+    "mcp__finsider-verification__scan_discrepancies",
+    "mcp__finsider-verification__reconcile_deletions",
+)
+READ_BUILTINS = ("Read", "Glob", "Grep", "Bash", "WebFetch", "WebSearch")
+BUILD_BUILTINS = READ_BUILTINS + ("Edit", "Write", "NotebookEdit")
 READ_ONLY_PHASE_TOOLS = ("Edit", "Write", "NotebookEdit", "Agent") + PRODUCTION_MUTATION_TOOLS
 BUILD_PHASE_TOOLS = ("Agent",) + PRODUCTION_MUTATION_TOOLS
+
+SENSITIVE_ENV_FRAGMENTS = (
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "DATABASE_URL",
+    "VERCEL_TOKEN",
+    "AZURE_",
+    "SUPABASE_",
+    "RAILZ_",
+    "CLERK_SECRET",
+    "STRIPE_",
+    "MEOW_",
+    "AWS_SECRET",
+    "AWS_ACCESS",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "GITHUB_TOKEN",
+    "GH_TOKEN",
+    "SLACK_BOT_TOKEN",
+    "REDIS_URL",
+)
 
 
 class AgentFailure(RuntimeError):
@@ -29,11 +64,17 @@ class AgentFailure(RuntimeError):
 
 def build_command(schema, phase, claude_bin=CLAUDE_BIN):
     disallowed = BUILD_PHASE_TOOLS if phase in ("build", "rework") else READ_ONLY_PHASE_TOOLS
+    allowed = (
+        BUILD_BUILTINS + VERIFICATION_BUILD_TOOLS + ("mcp__atlassian__*",)
+        if phase in ("build", "rework")
+        else READ_BUILTINS + VERIFICATION_READ_TOOLS
+    )
+    builtins = BUILD_BUILTINS if phase in ("build", "rework") else READ_BUILTINS
     settings = {
         "hooks": {
             "PreToolUse": [
                 {
-                    "matcher": "Bash",
+                    "matcher": "*",
                     "hooks": [
                         {
                             "type": "command",
@@ -58,7 +99,12 @@ def build_command(schema, phase, claude_bin=CLAUDE_BIN):
         json.dumps(schema, separators=(",", ":")),
         "--settings",
         json.dumps(settings, separators=(",", ":")),
-        "--dangerously-skip-permissions",
+        "--permission-mode",
+        "dontAsk",
+        "--tools",
+        ",".join(builtins),
+        "--allowedTools",
+        ",".join(allowed),
         "--disallowedTools",
         ",".join(disallowed),
     ]
@@ -113,13 +159,15 @@ class ClaudeRunner:
         self.environ = dict(environ if environ is not None else os.environ)
         self.process_factory = process_factory
         self.active_process = None
+        self._cancel_requested = False
 
     def _clean_environment(self, phase):
-        environment = {
-            key: value
-            for key, value in self.environ.items()
-            if key not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
-        }
+        environment = {}
+        for key, value in self.environ.items():
+            upper_key = key.upper()
+            if any(fragment in upper_key for fragment in SENSITIVE_ENV_FRAGMENTS):
+                continue
+            environment[key] = value
         environment["FINSIDER_ACCURACY_PHASE"] = phase
         return environment
 
@@ -134,9 +182,9 @@ class ClaudeRunner:
         )
 
     def terminate(self):
+        self._cancel_requested = True
         process = self.active_process
         if process is None or process.poll() is not None:
-            self.active_process = None
             return
         try:
             os.killpg(process.pid, signal.SIGTERM)
@@ -146,17 +194,14 @@ class ClaudeRunner:
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
-        finally:
-            for stream in (process.stdin, process.stdout, process.stderr):
-                if stream is not None and not stream.closed:
-                    stream.close()
-            self.active_process = None
 
     def run(self, phase, prompt, schema, cwd):
         command = build_command(schema, phase, claude_bin=self.claude_bin)
         stdout_path, stderr_path = self._trace_paths(phase)
+        process = None
+        self._cancel_requested = False
         try:
-            self.active_process = self.process_factory(
+            process = self.process_factory(
                 command,
                 cwd=cwd,
                 env=self._clean_environment(phase),
@@ -166,24 +211,37 @@ class ClaudeRunner:
                 text=True,
                 start_new_session=True,
             )
-            stdout, stderr = self.active_process.communicate(
+            self.active_process = process
+            stdout, stderr = process.communicate(
                 input=prompt, timeout=self.timeout_seconds
             )
-            return_code = self.active_process.returncode
+            return_code = process.returncode
         except subprocess.TimeoutExpired as error:
-            self.terminate()
+            if process is not None and process.poll() is None:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait()
             raise AgentFailure(
                 "Claude %s phase timed out after %ss" % (phase, self.timeout_seconds),
                 transient=True,
             ) from error
         finally:
-            if self.active_process is not None and self.active_process.poll() is not None:
+            if process is not None and self.active_process is process and process.poll() is not None:
                 self.active_process = None
+            if process is not None and process.poll() is not None:
+                for stream in (process.stdin, process.stdout, process.stderr):
+                    if stream is not None and not stream.closed:
+                        stream.close()
 
         with open(stdout_path, "w") as stdout_file:
             stdout_file.write(stdout or "")
         with open(stderr_path, "w") as stderr_file:
             stderr_file.write(stderr or "")
+
+        if self._cancel_requested:
+            raise AgentFailure("Claude %s phase was interrupted" % phase, transient=True)
 
         if return_code != 0:
             combined = ((stderr or "") + "\n" + (stdout or "")).strip()

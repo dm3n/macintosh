@@ -13,6 +13,7 @@ from accuracy_loop.workspace import (  # noqa: E402
     create_worktree,
     inspect_worktree,
     remove_clean_worktree,
+    verify_pull_request,
 )
 
 
@@ -28,6 +29,8 @@ class WorktreeTests(unittest.TestCase):
         self.root = self.temporary.name
         self.repo = os.path.join(self.root, "repo")
         self.runtime = os.path.join(self.root, "runtime")
+        self.remote = os.path.join(self.root, "remote.git")
+        git("init", "--bare", self.remote, cwd=self.root)
         os.makedirs(self.repo)
         git("init", "-b", "development", cwd=self.repo)
         git("config", "user.email", "daniel@nodebase.ca", cwd=self.repo)
@@ -36,6 +39,8 @@ class WorktreeTests(unittest.TestCase):
             readme.write("fixture\n")
         git("add", "README.md", cwd=self.repo)
         git("commit", "-m", "fixture", cwd=self.repo)
+        git("remote", "add", "origin", self.remote, cwd=self.repo)
+        git("push", "-u", "origin", "development", cwd=self.repo)
         self.repositories = {"fixture": Repo(self.repo, "development")}
 
     def tearDown(self):
@@ -92,6 +97,53 @@ class WorktreeTests(unittest.TestCase):
 
         self.assertTrue(remove_clean_worktree(worktree, require_pushed=False))
         self.assertFalse(os.path.exists(worktree.path))
+
+    def test_remote_branch_must_match_local_head_before_cleanup(self):
+        worktree = create_worktree(
+            "fixture", "ACC-5", "Pushed", self.runtime, repositories=self.repositories
+        )
+        git("push", "-u", "origin", worktree.branch, cwd=worktree.path)
+        with open(os.path.join(worktree.path, "README.md"), "a") as readme:
+            readme.write("second commit\n")
+        git("add", "README.md", cwd=worktree.path)
+        git("commit", "-m", "second", cwd=worktree.path)
+
+        inspection = inspect_worktree(worktree)
+
+        self.assertFalse(inspection["pushed"])
+        self.assertNotEqual(inspection["remote_head"], inspection["head"])
+        self.assertFalse(remove_clean_worktree(worktree, require_pushed=True))
+
+        git("push", cwd=worktree.path)
+        self.assertTrue(inspect_worktree(worktree)["pushed"])
+
+    def test_pr_verification_requires_open_exact_head_and_cpa_label(self):
+        worktree = create_worktree(
+            "fixture", "ACC-6", "Delivery", self.runtime, repositories=self.repositories
+        )
+        head = git("rev-parse", "HEAD", cwd=worktree.path)
+        git("push", "-u", "origin", worktree.branch, cwd=worktree.path)
+        payload = {
+            "state": "OPEN",
+            "isDraft": False,
+            "baseRefName": "development",
+            "headRefName": worktree.branch,
+            "headRefOid": head,
+            "title": "NEEDS CPA REVIEW: prove cash accuracy",
+            "url": "https://github.com/dm3n/fixture/pull/1",
+        }
+
+        def gh_runner(_command, **_kwargs):
+            return subprocess.CompletedProcess([], 0, stdout=__import__("json").dumps(payload), stderr="")
+
+        self.assertTrue(verify_pull_request(
+            worktree, payload["url"], head, moves_customer_numbers=True, runner=gh_runner
+        ))
+
+        payload["headRefOid"] = "0" * 40
+        self.assertFalse(verify_pull_request(
+            worktree, payload["url"], head, moves_customer_numbers=True, runner=gh_runner
+        ))
 
 
 if __name__ == "__main__":

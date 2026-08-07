@@ -32,7 +32,9 @@ An open PR, named owner, explanation, unsupported provider, stale connection, or
 
 ## Contract quality
 
-The work-unit contract must include a stable ID and `idempotency_key`, the exact domain, named companies/workspaces, one root-cause hypothesis, specific assertions, and a reproducible verification plan. A code action must name one allowlisted `target_repo`. Operations and proof actions use `null`.
+The work-unit contract must include a stable ID, the exact domain, named companies/workspaces, one root-cause hypothesis, specific assertions, and a reproducible verification plan. Supply an `idempotency_key`, but understand the supervisor deterministically replaces it from the accepted contract before any action. A code action must name one allowlisted `target_repo`. Operations and proof actions use `null`.
+
+Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Return every blocker ID whose required evidence is now directly proved in `resolved_blocker_ids`. Never mark a blocker resolved because a ticket or PR merely exists.
 
 Do not prescribe tolerance widening to make a check pass. Do not duplicate a branch, PR, Jira issue, comment, or verification job already carrying the idempotency key.
 

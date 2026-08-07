@@ -18,6 +18,8 @@ Completion requires two consecutive full-application sweeps with different sweep
 6. The onboarding accuracy gate was exercised end to end and is proved.
 7. UI, API, export, and agent outputs agree with the same deterministic backend source for identical workspace, period, layer, and dimension inputs.
 8. All supported historical periods, transaction layers, report dimensions, and material drilldowns are covered.
+9. The authoritative roster has one unique record per workspace. Active workspaces are included; archived, test, and unsupported workspaces have explicit exclusion reasons.
+10. No unresolved blocker remains in supervisor state.
 
 An explanation, Jira ticket, owner, open PR, CPA hold, vendor limitation, stale connection, or customer re-auth request is not accuracy. It is a blocker. The loop stays alive and continues other work.
 
@@ -56,6 +58,14 @@ If a domain lacks a deterministic verifier, the missing verifier is the next acc
 
 One rejected code build gets one rework. A second rejection becomes a blocker and the loop advances to other work.
 
+## Required product surfaces
+
+Each full sweep proves these exact machine keys:
+
+`source_api`, `report_api`, `profit_and_loss_ui`, `balance_sheet_ui`, `cash_flow_ui`, `adjustments_ui`, `cash_proof_ui`, `kpi_ui`, `flux_ui`, `quality_of_earnings_ui`, `transaction_drilldowns_ui`, `dashboard_ui`, `board_reporting_ui`, `excel_export`, `ai_cfo`, `finsider_mcp`, `deal_model`, `forecast_model`, and `onboarding`.
+
+Required transaction layers are exactly `original`, `adjusted`, and `bridge`. Required dimensions include `workspace` and `tracking_category`. Period coverage is `all_supported_history`.
+
 ## Safety rails
 
 - Never merge or deploy.
@@ -66,6 +76,8 @@ One rejected code build gets one rework. A second rejection becomes a blocker an
 - Every code fix begins with a reproducing test, runs targeted verification, and preserves tenant and workspace scoping.
 - Every user-facing communication follows the Finsider Plain English block, names client companies with workspace IDs, and contains no AI attribution.
 - Check for an existing branch, PR, ticket, comment, or verification job carrying the work unit's idempotency key before creating one.
+- The supervisor derives the idempotency key from the accepted contract and persists the action intent before execution. External jobs and artifacts return durable receipts for crash-resume polling.
+- Child roles run with phase-specific tool allowlists, an all-tool pre-use safety hook, and deployment/production credentials removed from their environment.
 - Preserve unrelated dirty files and existing worktrees.
 
 ## Writable repositories
@@ -110,6 +122,15 @@ A completion candidate must contain:
 - `stale`
 - `unresolved_surfaces`
 - `onboarding_gate_verified`
+- `workspace_roster`, with a unique ID, name, lifecycle, and inclusion decision for every workspace; active entries also carry `latest_sync_at`, `verification_id`, and `verified_at`
 - `domains`, keyed by all 20 required domain keys, with `{ "status": "proved", "evidence": [ ... ] }`
+- `scope.periods`, proving `all_supported_history`
+- `scope.layers`, proving `original`, `adjusted`, and `bridge`
+- `scope.dimensions`, proving `workspace` and `tracking_category`
+- `scope.surfaces`, keyed by every required product surface with proved evidence
+
+Every evidence entry is structured as `{kind, id, source, observed_at, workspace_ids, periods, layers, dimensions, surfaces}`. Lists are non-empty, timestamps include timezones, and the combined evidence for each domain and surface covers every active workspace.
+
+The second clean sweep must retain the same authoritative roster, advance its observation time and global watermarks, and use a new verification ID with a later verification timestamp for every active workspace. A replay, stale remote branch, aggregate count, opaque evidence string, or roster change cannot complete the sequence.
 
 The supervisor, not an agent, decides whether two accepted sweeps meet completion.

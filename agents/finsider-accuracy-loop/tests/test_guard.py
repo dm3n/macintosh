@@ -8,7 +8,7 @@ import unittest
 PACKAGE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PACKAGE_ROOT)
 
-from accuracy_loop.guard import blocked_reason  # noqa: E402
+from accuracy_loop.guard import blocked_reason, tool_blocked_reason  # noqa: E402
 
 
 GUARD = os.path.join(PACKAGE_ROOT, "accuracy_loop", "guard.py")
@@ -48,6 +48,10 @@ class SafetyGuardTests(unittest.TestCase):
             "npm publish",
             "curl --request PATCH https://api.example.com/records/1",
             "psql prod -c 'UPDATE report_snapshots SET amount = 0'",
+            "git -C /tmp/repo push origin development",
+            "curl --json '{\"value\":1}' https://api.example.com/records",
+            "bash -c 'vercel deploy --prod'",
+            "python3 -c 'import subprocess; subprocess.run([\"vercel\",\"--prod\"])'",
         )
         for command in cases:
             with self.subTest(command=command):
@@ -63,6 +67,26 @@ class SafetyGuardTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertIsNone(blocked_reason("build", command))
 
+    def test_phase_tool_policy_denies_unknown_and_mutating_mcp_tools(self):
+        self.assertIsNone(tool_blocked_reason(
+            "spec", "mcp__finsider-verification__list_workspaces", {}
+        ))
+        self.assertIsNotNone(tool_blocked_reason(
+            "spec", "mcp__finsider-verification__trigger_verification_run", {}
+        ))
+        self.assertIsNotNone(tool_blocked_reason(
+            "judge", "mcp__vercel__deploy", {"production": True}
+        ))
+        self.assertIsNotNone(tool_blocked_reason(
+            "build", "mcp__finsider-verification__review_discrepancy", {}
+        ))
+        self.assertIsNotNone(tool_blocked_reason(
+            "build", "mcp__finsider-verification__reconcile_deletions", {"apply": True}
+        ))
+        self.assertIsNone(tool_blocked_reason(
+            "build", "mcp__finsider-verification__reconcile_deletions", {"apply": False}
+        ))
+
     def test_hook_process_denies_with_exit_two(self):
         payload = json.dumps({
             "hook_event_name": "PreToolUse",
@@ -77,6 +101,20 @@ class SafetyGuardTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 2)
         self.assertIn("blocked by Finsider accuracy safety rail", result.stderr)
+
+    def test_hook_process_applies_policy_to_non_bash_tools(self):
+        payload = json.dumps({
+            "hook_event_name": "PreToolUse",
+            "tool_name": "mcp__vercel__deploy",
+            "tool_input": {"production": True},
+        })
+        environment = dict(os.environ, FINSIDER_ACCURACY_PHASE="build")
+
+        result = subprocess.run(
+            [sys.executable, GUARD], input=payload, text=True, capture_output=True, env=environment
+        )
+
+        self.assertEqual(result.returncode, 2)
 
 
 if __name__ == "__main__":

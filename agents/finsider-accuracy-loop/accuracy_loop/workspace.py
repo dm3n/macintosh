@@ -1,5 +1,6 @@
 """Allowlisted, crash-resumable Git worktrees for Finsider fixes."""
 
+import json
 import os
 import re
 import subprocess
@@ -118,6 +119,7 @@ def inspect_worktree(worktree):
             "clean": False,
             "branch": None,
             "head": None,
+            "remote_head": None,
             "pushed": False,
         }
     status = _git(worktree.path, "status", "--porcelain").stdout.strip()
@@ -125,23 +127,66 @@ def inspect_worktree(worktree):
     head = _git(worktree.path, "rev-parse", "HEAD").stdout.strip()
     remote = _git(worktree.repo_path, "remote", "get-url", "origin", check=False)
     pushed = False
+    remote_head = None
     if remote.returncode == 0:
-        pushed = _git(
+        remote_ref = _git(
             worktree.repo_path,
             "ls-remote",
-            "--exit-code",
             "--heads",
             "origin",
             worktree.branch,
             check=False,
-        ).returncode == 0
+        )
+        if remote_ref.returncode == 0 and remote_ref.stdout.strip():
+            remote_head = remote_ref.stdout.split()[0]
+            pushed = remote_head == head
     return {
         "exists": True,
         "clean": not status,
         "branch": branch,
         "head": head,
+        "remote_head": remote_head,
         "pushed": pushed,
     }
+
+
+def verify_pull_request(
+    worktree, pr_url, expected_commit, moves_customer_numbers, runner=subprocess.run
+):
+    inspection = inspect_worktree(worktree)
+    if not inspection["exists"] or not inspection["clean"] or not inspection["pushed"]:
+        return False
+    if inspection["branch"] != worktree.branch or inspection["head"] != expected_commit:
+        return False
+    result = runner(
+        [
+            "gh", "pr", "view", pr_url, "--json",
+            "state,isDraft,baseRefName,headRefName,headRefOid,title,url",
+        ],
+        cwd=worktree.path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("unable to inspect PR handoff: %s" % result.stderr.strip())
+    try:
+        payload = json.loads(result.stdout)
+    except ValueError as error:
+        raise RuntimeError("gh returned malformed PR metadata") from error
+    expected = (
+        payload.get("state") == "OPEN"
+        and payload.get("isDraft") is False
+        and payload.get("baseRefName") == worktree.base_branch
+        and payload.get("headRefName") == worktree.branch
+        and payload.get("headRefOid") == expected_commit
+        and payload.get("url") == pr_url
+    )
+    if not expected:
+        return False
+    if moves_customer_numbers and "NEEDS CPA REVIEW" not in payload.get("title", ""):
+        return False
+    return True
 
 
 def remove_clean_worktree(worktree, require_pushed=True):

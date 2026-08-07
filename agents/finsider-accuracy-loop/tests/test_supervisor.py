@@ -12,6 +12,7 @@ from accuracy_loop.claude import AgentFailure  # noqa: E402
 from accuracy_loop.model import REQUIRED_DOMAINS, load_state, new_state, save_state  # noqa: E402
 from accuracy_loop.supervisor import Supervisor  # noqa: E402
 from accuracy_loop.workspace import Worktree  # noqa: E402
+from tests.test_model import complete_sweep  # noqa: E402
 
 
 def contract(action="proof"):
@@ -36,6 +37,7 @@ def spec_result(action="proof"):
         "summary": "One bounded unit selected.",
         "contract": contract(action),
         "blockers": [],
+        "resolved_blocker_ids": [],
         "coverage_observations": {},
     }
 
@@ -50,6 +52,12 @@ def build_result(full_sweep=None):
         "ticket_urls": [],
         "tests": ["fixture check passed"],
         "evidence": ["fixture:evidence"],
+        "receipts": [{
+            "kind": "verification_run",
+            "id": "verify-fixture",
+            "url": None,
+            "status": "complete",
+        }],
         "moves_customer_numbers": False,
         "wait_seconds": 0,
     }
@@ -64,30 +72,14 @@ def delivered_code_result():
         "branch": "agent/accuracy-acc-100-prove-report-parity",
         "commit": "0123456789abcdef",
         "pr_url": "https://github.com/dm3n/Mitch-be/pull/9999",
+        "receipts": [{
+            "kind": "pull_request",
+            "id": "9999",
+            "url": "https://github.com/dm3n/Mitch-be/pull/9999",
+            "status": "open",
+        }],
     })
     return result
-
-
-def complete_sweep(sweep_id):
-    return {
-        "sweep_id": sweep_id,
-        "observed_at": "2026-08-06T22:00:00Z",
-        "data_watermark": "2026-08-06T21:30:00Z",
-        "latest_sync_watermark": "2026-08-06T21:00:00Z",
-        "latest_deploy_watermark": "2026-08-06T20:00:00Z",
-        "active_workspaces": 30,
-        "verified_workspaces": 30,
-        "mismatches": 0,
-        "errors": 0,
-        "unknowns": 0,
-        "stale": 0,
-        "unresolved_surfaces": 0,
-        "onboarding_gate_verified": True,
-        "domains": {
-            domain: {"status": "proved", "evidence": ["evidence:%s" % domain]}
-            for domain in REQUIRED_DOMAINS
-        },
-    }
 
 
 def judge_result(verdict="ACCEPT", full_sweep=None):
@@ -169,6 +161,7 @@ class SupervisorTests(unittest.TestCase):
             runner=runner,
             create_worktree_fn=lambda *args, **kwargs: self.fake_worktree,
             remove_worktree_fn=lambda *args, **kwargs: True,
+            verify_delivery_fn=lambda *args, **kwargs: True,
             sleep_fn=lambda seconds: None,
         )
         return supervisor, runner
@@ -244,6 +237,7 @@ class SupervisorTests(unittest.TestCase):
             remove_worktree_fn=lambda *args, **kwargs: observed_states.append(
                 load_state(supervisor.state_path)
             ) or True,
+            verify_delivery_fn=lambda *args, **kwargs: True,
             sleep_fn=lambda seconds: None,
         )
 
@@ -290,8 +284,7 @@ class SupervisorTests(unittest.TestCase):
 
     def test_two_accepted_full_sweeps_exit_proof_complete(self):
         first = complete_sweep("sweep-1")
-        second = complete_sweep("sweep-2")
-        second["observed_at"] = "2026-08-06T22:05:00Z"
+        second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")
         supervisor, _ = self.supervisor(
             [
                 spec_result("proof"), build_result(first), judge_result("ACCEPT", first),
@@ -317,6 +310,103 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(state["phase"], "spec")
         self.assertEqual(state["phase_attempts"], 1)
         self.assertIsNotNone(state["retry_at"])
+
+    def test_spec_replaces_agent_idempotency_key_with_deterministic_key(self):
+        result = spec_result("proof")
+        result["contract"]["idempotency_key"] = "agent-chosen-random-value"
+        supervisor, _ = self.supervisor([result])
+
+        supervisor.step()
+        first = load_state(supervisor.state_path)["active_contract"]["idempotency_key"]
+
+        self.assertTrue(first.startswith("finsider-accuracy:ACC-100:"))
+        self.assertNotEqual(first, "agent-chosen-random-value")
+
+    def test_waiting_build_keeps_phase_receipt_and_contract_for_polling(self):
+        waiting = build_result()
+        waiting.update({
+            "outcome": "blocked",
+            "summary": "Verification run is still in flight.",
+            "wait_seconds": 60,
+            "receipts": [{
+                "kind": "verification_run",
+                "id": "run-123",
+                "url": None,
+                "status": "running",
+            }],
+        })
+        supervisor, runner = self.supervisor([spec_result("proof"), waiting])
+
+        supervisor.step()
+        key_before = load_state(supervisor.state_path)["active_contract"]["idempotency_key"]
+        outcome = supervisor.step()
+        state = load_state(supervisor.state_path)
+
+        self.assertEqual(outcome, "retry")
+        self.assertEqual(state["phase"], "build")
+        self.assertEqual(state["active_contract"]["idempotency_key"], key_before)
+        self.assertEqual(state["action_intent"]["receipts"][0]["id"], "run-123")
+        self.assertIn("run-123", supervisor._render_prompt("build", state))
+        self.assertEqual(runner.phases, ["spec", "build"])
+
+    def test_restart_keeps_action_intent_before_replaying_build(self):
+        supervisor, runner = self.supervisor([build_result()])
+        supervisor.ensure_runtime()
+        state = new_state()
+        state["phase"] = "build"
+        state["active_contract"] = contract("proof")
+        state["active_contract"]["idempotency_key"] = "finsider-accuracy:ACC-100:stable"
+        state["action_intent"] = {
+            "idempotency_key": "finsider-accuracy:ACC-100:stable",
+            "started_at": "2026-08-06T22:00:00Z",
+            "receipts": [],
+        }
+        save_state(supervisor.state_path, state)
+
+        supervisor.step()
+
+        self.assertEqual(runner.phases, ["build"])
+        self.assertIn("finsider-accuracy:ACC-100:stable", runner.prompts[0])
+
+    def test_spec_reconciles_resolved_blockers_by_stable_id(self):
+        result = spec_result("proof")
+        result["resolved_blocker_ids"] = ["ACC-OLD"]
+        supervisor, _ = self.supervisor([result])
+        supervisor.ensure_runtime()
+        state = new_state()
+        state["blockers"] = [
+            {"id": "ACC-OLD", "summary": "Old", "owner": "Ops", "evidence_needed": ["sync"]},
+            {"id": "ACC-KEEP", "summary": "Keep", "owner": "Eng", "evidence_needed": ["fix"]},
+        ]
+        save_state(supervisor.state_path, state)
+
+        supervisor.step()
+
+        self.assertEqual(
+            [item["id"] for item in load_state(supervisor.state_path)["blockers"]],
+            ["ACC-KEEP"],
+        )
+
+    def test_operational_runtime_error_retries_same_phase(self):
+        runner = ScriptedRunner([spec_result("code")])
+        supervisor = Supervisor(
+            runtime_dir=self.runtime,
+            source_dir=self.source,
+            finsider_dir=self.finsider,
+            runner=runner,
+            create_worktree_fn=lambda *args, **kwargs: (_ for _ in ()).throw(
+                RuntimeError("git fetch failed")
+            ),
+            remove_worktree_fn=lambda *args, **kwargs: True,
+            verify_delivery_fn=lambda *args, **kwargs: True,
+            sleep_fn=lambda seconds: None,
+        )
+
+        supervisor.step()
+        outcome = supervisor.step()
+
+        self.assertEqual(outcome, "retry")
+        self.assertEqual(load_state(supervisor.state_path)["phase"], "build")
 
 
 if __name__ == "__main__":

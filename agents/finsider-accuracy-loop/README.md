@@ -11,17 +11,19 @@ This is not a cron job. The next phase starts as soon as the prior phase ends. T
 - Verification triggers and dry runs are allowed only when they cannot change customer books.
 - Customer-number-changing work is held as `NEEDS CPA REVIEW`.
 - Each Claude role has a fresh context. Spec and judge cannot edit files. No role can spawn nested agents.
+- Claude runs without permission bypass, with a deny-by-default phase tool policy, an all-tool safety hook, and production/deployment credentials removed from child environments.
 - The supervisor, not Claude, decides completion.
 
 ## Completion gate
 
 The loop exits cleanly only after two different, independently judged full-application sweeps prove:
 
-- every active workspace is included and fresh;
+- the authoritative workspace roster is complete, every active workspace is included and fresh, and every exclusion has an explicit lifecycle reason;
 - zero mismatches, errors, unknowns, stale items, or unresolved surfaces;
-- all 20 contract domains have reproducible evidence;
+- all 20 contract domains and every required product surface have structured, reproducible evidence covering every active workspace;
 - all supported periods, layers, dimensions, drilldowns, APIs, UIs, exports, and agent outputs agree;
 - the onboarding accuracy gate works end to end.
+- the second sweep uses a different immutable verification run for every active workspace.
 
 Tickets, explanations, owners, stale connections, unsupported providers, open PRs, and CPA holds remain blockers. They never count as accuracy.
 
@@ -32,7 +34,7 @@ Tickets, explanations, owners, stale connections, unsupported providers, open PR
 ./agents/finsider-accuracy-loop/install.sh --activate
 ```
 
-Activation refuses while the legacy fix or tie-out process is in the middle of a pass. It unloads both periodic launchd jobs, initializes the three-file state, installs the persistent plist, and starts the supervisor.
+Activation refuses while the legacy fix or tie-out process is active. It validates the full harness before unloading anything, initializes the three-file state, installs the persistent plist, and starts the supervisor. A failed launchd handoff restores the prior plist.
 
 ## Runtime state
 

@@ -2,17 +2,23 @@
 
 import copy
 import fcntl
+import hashlib
 import json
 import os
 import shutil
 import signal
+import subprocess
 import time
 from datetime import datetime, timedelta, timezone
 from threading import Event
 
 from .claude import AgentFailure, ClaudeRunner
 from .model import (
+    LIFECYCLE_STATES,
+    REQUIRED_DIMENSIONS,
     REQUIRED_DOMAINS,
+    REQUIRED_LAYERS,
+    REQUIRED_SURFACES,
     advance_phase,
     load_state,
     new_state,
@@ -20,12 +26,156 @@ from .model import (
     save_state,
     utc_now,
 )
-from .workspace import REPOSITORIES, Worktree, create_worktree, remove_clean_worktree
+from .workspace import (
+    REPOSITORIES,
+    Worktree,
+    create_worktree,
+    remove_clean_worktree,
+    verify_pull_request,
+)
+
+
+STRUCTURED_EVIDENCE_SCHEMA = {
+    "type": "object",
+    "required": [
+        "kind", "id", "source", "observed_at", "workspace_ids", "periods",
+        "layers", "dimensions", "surfaces",
+    ],
+    "properties": {
+        "kind": {"type": "string"},
+        "id": {"type": "string"},
+        "source": {"type": "string"},
+        "observed_at": {"type": "string"},
+        "workspace_ids": {"type": "array", "items": {"type": "string"}},
+        "periods": {"type": "array", "items": {"type": "string"}},
+        "layers": {"type": "array", "items": {"type": "string"}},
+        "dimensions": {"type": "array", "items": {"type": "string"}},
+        "surfaces": {"type": "array", "items": {"type": "string"}},
+    },
+}
+
+PROOF_SCHEMA = {
+    "type": "object",
+    "required": ["status", "evidence"],
+    "properties": {
+        "status": {"enum": ["unknown", "partial", "proved"]},
+        "evidence": {"type": "array", "items": STRUCTURED_EVIDENCE_SCHEMA},
+    },
+}
+
+FULL_SWEEP_SCHEMA = {
+    "type": "object",
+    "required": [
+        "sweep_id", "observed_at", "data_watermark", "latest_sync_watermark",
+        "latest_deploy_watermark", "active_workspaces", "verified_workspaces",
+        "mismatches", "errors", "unknowns", "stale", "unresolved_surfaces",
+        "onboarding_gate_verified", "workspace_roster", "domains", "scope",
+    ],
+    "properties": {
+        "sweep_id": {"type": "string"},
+        "observed_at": {"type": "string"},
+        "data_watermark": {"type": "string"},
+        "latest_sync_watermark": {"type": "string"},
+        "latest_deploy_watermark": {"type": "string"},
+        "active_workspaces": {"type": "integer"},
+        "verified_workspaces": {"type": "integer"},
+        "mismatches": {"type": "integer"},
+        "errors": {"type": "integer"},
+        "unknowns": {"type": "integer"},
+        "stale": {"type": "integer"},
+        "unresolved_surfaces": {"type": "integer"},
+        "onboarding_gate_verified": {"type": "boolean"},
+        "workspace_roster": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["workspace_id", "name", "lifecycle", "included"],
+                "properties": {
+                    "workspace_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "lifecycle": {"enum": list(LIFECYCLE_STATES)},
+                    "included": {"type": "boolean"},
+                    "latest_sync_at": {"type": "string"},
+                    "verification_id": {"type": "string"},
+                    "verified_at": {"type": "string"},
+                    "exclusion_reason": {"type": "string"},
+                },
+            },
+        },
+        "domains": {
+            "type": "object",
+            "required": list(REQUIRED_DOMAINS),
+            "properties": {domain: PROOF_SCHEMA for domain in REQUIRED_DOMAINS},
+        },
+        "scope": {
+            "type": "object",
+            "required": ["periods", "layers", "dimensions", "surfaces"],
+            "properties": {
+                "periods": {
+                    "type": "object",
+                    "required": ["coverage", "evidence"],
+                    "properties": {
+                        "coverage": {"enum": ["all_supported_history"]},
+                        "evidence": {"type": "array", "items": STRUCTURED_EVIDENCE_SCHEMA},
+                    },
+                },
+                "layers": {
+                    "type": "object",
+                    "required": ["required", "covered", "evidence"],
+                    "properties": {
+                        "required": {"type": "array", "items": {"enum": list(REQUIRED_LAYERS)}},
+                        "covered": {"type": "array", "items": {"enum": list(REQUIRED_LAYERS)}},
+                        "evidence": {"type": "array", "items": STRUCTURED_EVIDENCE_SCHEMA},
+                    },
+                },
+                "dimensions": {
+                    "type": "object",
+                    "required": ["required", "covered", "evidence"],
+                    "properties": {
+                        "required": {"type": "array", "items": {"enum": list(REQUIRED_DIMENSIONS)}},
+                        "covered": {"type": "array", "items": {"enum": list(REQUIRED_DIMENSIONS)}},
+                        "evidence": {"type": "array", "items": STRUCTURED_EVIDENCE_SCHEMA},
+                    },
+                },
+                "surfaces": {
+                    "type": "object",
+                    "required": list(REQUIRED_SURFACES),
+                    "properties": {surface: PROOF_SCHEMA for surface in REQUIRED_SURFACES},
+                },
+            },
+        },
+    },
+}
+
+BLOCKER_SCHEMA = {
+    "type": "object",
+    "required": ["id", "summary", "owner", "evidence_needed"],
+    "properties": {
+        "id": {"type": "string"},
+        "summary": {"type": "string"},
+        "owner": {"type": "string"},
+        "evidence_needed": {"type": "array", "items": {"type": "string"}},
+    },
+}
+
+RECEIPT_SCHEMA = {
+    "type": "object",
+    "required": ["kind", "id", "url", "status"],
+    "properties": {
+        "kind": {"enum": ["verification_run", "pull_request", "jira", "other"]},
+        "id": {"type": "string"},
+        "url": {"type": ["string", "null"]},
+        "status": {"type": "string"},
+    },
+}
 
 
 SPEC_SCHEMA = {
     "type": "object",
-    "required": ["decision", "summary", "contract", "blockers", "coverage_observations"],
+    "required": [
+        "decision", "summary", "contract", "blockers", "resolved_blocker_ids",
+        "coverage_observations",
+    ],
     "properties": {
         "decision": {"enum": ["code", "operations", "proof"]},
         "summary": {"type": "string"},
@@ -50,7 +200,8 @@ SPEC_SCHEMA = {
                 "idempotency_key": {"type": "string"},
             },
         },
-        "blockers": {"type": "array", "items": {"type": "object"}},
+        "blockers": {"type": "array", "items": BLOCKER_SCHEMA},
+        "resolved_blocker_ids": {"type": "array", "items": {"type": "string"}},
         "coverage_observations": {"type": "object"},
     },
 }
@@ -59,7 +210,7 @@ BUILD_SCHEMA = {
     "type": "object",
     "required": [
         "outcome", "summary", "branch", "commit", "pr_url", "ticket_urls", "tests",
-        "evidence", "moves_customer_numbers", "wait_seconds",
+        "evidence", "receipts", "moves_customer_numbers", "wait_seconds",
     ],
     "properties": {
         "outcome": {"enum": ["ready_for_judge", "blocked", "failed"]},
@@ -70,9 +221,10 @@ BUILD_SCHEMA = {
         "ticket_urls": {"type": "array", "items": {"type": "string"}},
         "tests": {"type": "array", "items": {"type": "string"}},
         "evidence": {"type": "array", "items": {"type": "string"}},
+        "receipts": {"type": "array", "items": RECEIPT_SCHEMA},
         "moves_customer_numbers": {"type": "boolean"},
         "wait_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
-        "full_sweep": {"type": "object"},
+        "full_sweep": FULL_SWEEP_SCHEMA,
     },
 }
 
@@ -103,9 +255,9 @@ JUDGE_SCHEMA = {
         "rework_instructions": {"type": "array", "items": {"type": "string"}},
         "verified_evidence": {"type": "array", "items": {"type": "string"}},
         "coverage_updates": {"type": "object"},
-        "blockers": {"type": "array", "items": {"type": "object"}},
+        "blockers": {"type": "array", "items": BLOCKER_SCHEMA},
         "wait_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
-        "full_sweep": {"type": "object"},
+        "full_sweep": FULL_SWEEP_SCHEMA,
     },
 }
 
@@ -132,6 +284,7 @@ class Supervisor:
         runner=None,
         create_worktree_fn=create_worktree,
         remove_worktree_fn=remove_clean_worktree,
+        verify_delivery_fn=verify_pull_request,
         sleep_fn=time.sleep,
     ):
         self.runtime_dir = os.path.abspath(runtime_dir)
@@ -144,6 +297,7 @@ class Supervisor:
         self.runner = runner or ClaudeRunner(trace_dir=self.trace_dir)
         self.create_worktree_fn = create_worktree_fn
         self.remove_worktree_fn = remove_worktree_fn
+        self.verify_delivery_fn = verify_delivery_fn
         self.sleep_fn = sleep_fn
         self.stop_event = Event()
         self._lock_file = None
@@ -182,6 +336,7 @@ class Supervisor:
             "spec_result": state.get("spec_result"),
             "build_result": state.get("build_result"),
             "judge_result": state.get("judge_result"),
+            "action_intent": state.get("action_intent"),
             "rework_count": state.get("rework_count"),
             "legacy_measurement_ledger": "/Users/dm3n/.claude/scripts/tieout-loop/LEDGER.md",
             "legacy_fix_ledger": "/Users/dm3n/finsider-platform/.accuracy-fix-loop/LEDGER.md",
@@ -241,8 +396,6 @@ class Supervisor:
             raise AgentFailure("spec selected an unknown accuracy domain")
         if not work_unit.get("id") or not work_unit.get("title"):
             raise AgentFailure("spec contract is missing its identity")
-        if not work_unit.get("idempotency_key"):
-            raise AgentFailure("spec contract is missing its idempotency key")
         if not work_unit.get("acceptance_assertions") or not work_unit.get("verification_plan"):
             raise AgentFailure("spec contract has no testable assertions")
         target_repo = work_unit.get("target_repo")
@@ -250,6 +403,31 @@ class Supervisor:
             raise AgentFailure("code contract target repository is not allowlisted")
         if action in ("operations", "proof") and target_repo is not None:
             raise AgentFailure("non-code contract cannot target a repository")
+
+    def _derive_idempotency_key(self, work_unit):
+        identity = {
+            key: work_unit.get(key)
+            for key in (
+                "id", "title", "action", "target_repo", "domain", "workspace_names",
+                "acceptance_assertions", "verification_plan", "moves_customer_numbers",
+            )
+        }
+        digest = hashlib.sha256(
+            json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()[:20]
+        return "finsider-accuracy:%s:%s" % (work_unit["id"], digest)
+
+    def _reconcile_blockers(self, state, result):
+        resolved = set(result.get("resolved_blocker_ids", []))
+        by_id = {
+            blocker.get("id"): blocker
+            for blocker in state.get("blockers", [])
+            if isinstance(blocker, dict) and blocker.get("id") not in resolved
+        }
+        for blocker in result.get("blockers", []):
+            if blocker.get("id"):
+                by_id[blocker["id"]] = copy.deepcopy(blocker)
+        state["blockers"] = list(by_id.values())
 
     def _judge_accepts(self, state, result):
         gates = result.get("hard_gates", {})
@@ -265,7 +443,11 @@ class Supervisor:
             return False
         work_unit = state.get("active_contract") or {}
         build = state.get("build_result") or {}
-        if build.get("outcome") != "ready_for_judge" or not build.get("evidence"):
+        if (
+            build.get("outcome") != "ready_for_judge"
+            or not build.get("evidence")
+            or not build.get("receipts")
+        ):
             return False
         if work_unit.get("action") == "code":
             delivery_fields = (build.get("branch"), build.get("commit"), build.get("pr_url"))
@@ -277,6 +459,14 @@ class Supervisor:
                 "moves_customer_numbers"
             ) is not True:
                 return False
+            worktree = self._worktree_from_state(state)
+            if worktree is None or not self.verify_delivery_fn(
+                worktree,
+                build["pr_url"],
+                build["commit"],
+                work_unit.get("moves_customer_numbers") is True,
+            ):
+                return False
         return True
 
     def _reset_cycle(self, state, wait_seconds=0):
@@ -286,6 +476,7 @@ class Supervisor:
         state["spec_result"] = None
         state["build_result"] = None
         state["judge_result"] = None
+        state["action_intent"] = None
         state["worktree"] = None
         state["rework_count"] = 0
         state["last_error"] = None
@@ -299,15 +490,24 @@ class Supervisor:
 
     def _record_blocker(self, state, result):
         work_unit = state.get("active_contract") or {}
-        state["blockers"].append({
+        external = result.get("blockers", [])
+        first = external[0] if external and isinstance(external[0], dict) else {}
+        blocker = {
+            "id": first.get("id") or work_unit.get("id"),
+            "summary": result.get("summary"),
+            "owner": first.get("owner") or "Finsider accuracy loop",
+            "evidence_needed": first.get("evidence_needed") or result.get(
+                "rework_instructions", []
+            ) or result.get("findings", []),
             "contract_id": work_unit.get("id"),
             "title": work_unit.get("title"),
-            "summary": result.get("summary"),
-            "findings": result.get("findings", []),
-            "external_blockers": result.get("blockers", []),
             "worktree": state.get("worktree"),
             "recorded_at": utc_now(),
-        })
+        }
+        state["blockers"] = [
+            existing for existing in state.get("blockers", [])
+            if existing.get("id") != blocker["id"]
+        ] + [blocker]
 
     def _cleanup_delivered_worktree(self, worktree, build):
         if worktree and build.get("pr_url"):
@@ -318,10 +518,13 @@ class Supervisor:
             "spec", self._render_prompt("spec", state), SPEC_SCHEMA, self.finsider_dir
         )
         self._validate_contract(result)
+        result["contract"]["idempotency_key"] = self._derive_idempotency_key(
+            result["contract"]
+        )
         state["cycle"] += 1
         state["spec_result"] = result
         state["active_contract"] = result["contract"]
-        state["blockers"].extend(result.get("blockers", []))
+        self._reconcile_blockers(state, result)
         state = advance_phase(state, "build")
         save_state(self.state_path, state)
         self._append_ledger("spec", "contracted", result["summary"])
@@ -331,10 +534,26 @@ class Supervisor:
         if state["active_contract"]["action"] == "code":
             self._prepare_code_worktree(state)
         phase = "rework" if rework else "build"
+        if state.get("action_intent") is None:
+            state["action_intent"] = {
+                "idempotency_key": state["active_contract"]["idempotency_key"],
+                "started_at": utc_now(),
+                "receipts": [],
+            }
+            save_state(self.state_path, state)
         result = self.runner.run(
             phase, self._render_prompt(phase, state), BUILD_SCHEMA, self._phase_cwd(state)
         )
         state["build_result"] = result
+        state["action_intent"]["receipts"] = copy.deepcopy(result.get("receipts", []))
+        wait_seconds = _bounded_wait(result.get("wait_seconds", 0))
+        if result.get("outcome") == "blocked" and wait_seconds:
+            state["retry_at"] = (
+                datetime.now(timezone.utc) + timedelta(seconds=wait_seconds)
+            ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            save_state(self.state_path, state)
+            self._append_ledger(phase, "WAIT", result["summary"])
+            return "retry"
         state = advance_phase(state, "judge")
         save_state(self.state_path, state)
         self._append_ledger(phase, result["outcome"], result["summary"])
@@ -395,6 +614,8 @@ class Supervisor:
         if state.get("status") == "complete":
             return "complete"
         phase = state["phase"]
+        if phase not in ("spec", "build", "rework", "judge"):
+            raise RuntimeError("unknown persisted phase: %s" % phase)
         try:
             if phase == "spec":
                 return self._run_spec(state)
@@ -404,8 +625,7 @@ class Supervisor:
                 return self._run_build(state, rework=True)
             if phase == "judge":
                 return self._run_judge(state)
-            raise RuntimeError("unknown persisted phase: %s" % phase)
-        except AgentFailure as error:
+        except (AgentFailure, OSError, subprocess.SubprocessError, RuntimeError) as error:
             state = load_state(self.state_path)
             state["phase_attempts"] = state.get("phase_attempts", 0) + 1
             state["last_error"] = str(error)

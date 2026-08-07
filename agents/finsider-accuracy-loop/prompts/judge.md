@@ -18,6 +18,8 @@ Score exactly against the global rubric. `ACCEPT` requires at least `0.90` and e
 
 For coverage updates, mark a domain `proved` only with reproducible evidence that covers its whole contract. Use `partial` for any gap.
 
-Include `full_sweep` only if you independently verified all active workspaces, all required time/layer/dimension scope, all 20 domains, a fresh onboarding gate, zero mismatches, zero errors, zero unknowns, zero stale items, and zero unresolved surfaces. The sweep must carry source IDs and watermarks in its evidence references. Explained, ticketed, held, unsupported, or externally owned residuals disqualify it.
+Include `full_sweep` only if you independently verified the authoritative roster and every active workspace, all supported history, all required layers and dimensions, every required surface, all 20 domains, a fresh onboarding gate, zero mismatches, zero errors, zero unknowns, zero stale items, and zero unresolved surfaces. Every active workspace needs an immutable completed verification ID observed after its own latest sync and the latest deployment. Every proof must use structured evidence with source/run IDs and complete scope. Reusing a prior verification ID is not a second sweep. Explained, ticketed, held, unsupported, externally owned, or otherwise unresolved blockers disqualify completion.
+
+Every blocker uses a stable `{id, summary, owner, evidence_needed}` object.
 
 Return only the structured result required by the supplied JSON schema.
