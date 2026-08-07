@@ -1,5 +1,6 @@
 import os
 import plistlib
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -63,6 +64,9 @@ class RuntimeArtifactTests(unittest.TestCase):
 
     def test_activation_refuses_noncanonical_source_before_launchd_changes(self):
         with tempfile.TemporaryDirectory() as directory:
+            noncanonical_root = os.path.join(directory, "finsider-accuracy-loop")
+            shutil.copytree(ROOT, noncanonical_root)
+            noncanonical_installer = os.path.join(noncanonical_root, "install.sh")
             fake_pgrep = os.path.join(directory, "pgrep")
             with open(fake_pgrep, "w") as executable:
                 executable.write("#!/bin/sh\nexit 1\n")
@@ -74,11 +78,12 @@ class RuntimeArtifactTests(unittest.TestCase):
             environment["FINSIDER_LOG_DIR"] = os.path.join(directory, "logs")
 
             result = subprocess.run(
-                [INSTALLER, "--activate"],
+                [noncanonical_installer, "--activate"],
                 text=True,
                 capture_output=True,
-                cwd=ROOT,
+                cwd=noncanonical_root,
                 env=environment,
+                timeout=20,
             )
 
             self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
