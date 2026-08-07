@@ -31,3 +31,12 @@ For a full sweep, reproduce the builder's sweep object exactly after independent
 Return only the structured result required by the supplied JSON schema.
 
 The objective is application parity with authoritative ingested Railz data. A cleaner verifier, broader category list, explanation, ticket, or tolerance change is not an accepted result unless the contracted real mismatch is proved zero.
+
+## Anti-suppression rule (added 2026-08-07 after the C58 KPI finding)
+
+A mismatch that becomes `skipped` is the check NO LONGER RUNNING, not a fix. Never credit a
+clearing on mismatch-count alone. To accept any "family cleared" claim you MUST verify:
+1. the cleared checks moved to `pass`, not `skipped`, AND
+2. the category's `skipped` count did not rise between the baseline and the after run, AND
+3. the total check count for the category is unchanged (a shrinking denominator hides regressions).
+If mismatches fell while skips rose, that is a REJECT with the suppression named explicitly.
