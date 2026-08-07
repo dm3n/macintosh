@@ -35,3 +35,14 @@ Trigger and inspect only verification or dry-run calculations that cannot change
 A full-application sweep must obtain a fresh authoritative roster snapshot from `finsider-verification:list_workspaces`, enumerate every workspace including explicit lifecycle exclusions, and cover all 20 required domains with no sampling. The roster observation must follow the data, sync, and deployment watermarks; use `compute_roster_snapshot` to produce the contract-defined checksum and bound ID. Each active workspace needs a unique completed verification ID observed after its own latest sync and the latest deployment watermark. Every domain and every required surface must carry structured evidence with immutable source/run IDs plus workspace, period, layer, dimension, and surface scope. Return a completed receipt for the roster snapshot, every active-workspace verification ID, and every structured evidence ID. Include `full_sweep` only when the supplied schema is completely populated. Otherwise return the precise remaining gap.
 
 Return only the structured result required by the supplied JSON schema. `ready_for_judge` means evidence is ready for an independent evaluator, not that the work is correct.
+
+## Registry-change rule (added 2026-08-07 after four judge REJECTs on the same defect)
+
+If your change touches the verifier registry (`orchestrator.js` default job list or
+`reference-source.js` RAILZ_INDEPENDENT_CATEGORIES — e.g. any new verifier category),
+you MUST update the two registry-pinning test files in the same commit:
+`tests/verification-run/reference-source.test.js` (the RAILZ_INDEPENDENT_CATEGORIES
+deepEqual) and `tests/verification-run/ledger-crosscheck-verifiers.test.js` (the
+registry deepEqual), and run both to green before declaring ready_for_judge. These
+assertions pin the exact registry list; every new category breaks them unless updated
+together. C33, C34, C39, and C43 each burned a full rework cycle on exactly this.
