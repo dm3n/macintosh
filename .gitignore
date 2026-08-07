@@ -11,6 +11,7 @@ homelab/.env
 node_modules/
 dist/
 .next/
+.worktrees/
 
 # Logs
 *.log
