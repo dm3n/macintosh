@@ -39,3 +39,13 @@ Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Retu
 Do not prescribe tolerance widening to make a check pass. Do not duplicate a branch, PR, Jira issue, comment, or verification job already carrying the idempotency key.
 
 Return only the structured result required by the supplied JSON schema.
+
+## Ownership rails (do not contract these)
+
+- The BS `reconstruct` alignment (bs-verifiers.js vs railz-report-snapshot-source.js) is
+  OWNED by SCRUM-711 / David's `feat/scrum-711` branch. Daniel's recorded ruling (SCRUM-711
+  comment 16484) chose option (a): the INGEST gains `reconstruct: 'true'`; the verifier keeps
+  it. Removing reconstruct from the verifier (option b) was explicitly rejected — it makes the
+  verifier inherit Railz's duplicate-row bug and stop catching it. C47 did exactly this and was
+  reverted (#1094/#1095). Until feat/scrum-711 merges, BS mismatches on reconstruct-affected
+  workspaces are the INTENDED honest signal, not a drivable verifier flaw.
