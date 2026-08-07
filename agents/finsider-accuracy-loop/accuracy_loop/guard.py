@@ -9,6 +9,7 @@ import sys
 
 DELIVERY_ROOT = "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees"
 FORBIDDEN_EDIT_PATHS = (
+    re.compile(r"^\.git(?:/|$)"),
     re.compile(r"^\.github/(?:workflows|actions)/"),
     re.compile(r"^\.circleci/"),
     re.compile(r"^(?:azure-pipelines|vercel|netlify)\.(?:yml|yaml|json|toml)$"),
@@ -106,12 +107,16 @@ def tool_blocked_reason(phase, tool_name, tool_input):
         if not isinstance(path, str) or not path:
             return "edit tool did not provide a file path"
         resolved = os.path.realpath(path if os.path.isabs(path) else os.path.join(os.getcwd(), path))
+        active_worktree = os.environ.get("FINSIDER_ACCURACY_WORKTREE")
+        if not active_worktree:
+            return "active persisted worktree was not supplied to the edit guard"
+        worktree_root = os.path.realpath(active_worktree)
         delivery_root = os.path.realpath(DELIVERY_ROOT)
-        if not resolved.startswith(delivery_root + os.sep):
-            return "edits are restricted to persisted accuracy worktrees"
-        relative = os.path.relpath(resolved, delivery_root).replace(os.sep, "/")
-        parts = relative.split("/", 1)
-        worktree_relative = parts[1] if len(parts) == 2 else ""
+        if not worktree_root.startswith(delivery_root + os.sep):
+            return "active worktree is outside the persisted delivery root"
+        if resolved != worktree_root and not resolved.startswith(worktree_root + os.sep):
+            return "edits are restricted to the active persisted accuracy worktree"
+        worktree_relative = os.path.relpath(resolved, worktree_root).replace(os.sep, "/")
         if any(pattern.search(worktree_relative) for pattern in FORBIDDEN_EDIT_PATHS):
             return "workflow, deployment, and infrastructure paths are read-only"
     if tool_name in builtins:

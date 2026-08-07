@@ -242,10 +242,13 @@ class ClaudeRunner:
         process = None
         self._cancel_requested = False
         try:
+            environment = self._clean_environment(capability_phase)
+            if capability_phase in ("code", "rework"):
+                environment["FINSIDER_ACCURACY_WORKTREE"] = os.path.realpath(cwd)
             process = self.process_factory(
                 command,
                 cwd=cwd,
-                env=self._clean_environment(capability_phase),
+                env=environment,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

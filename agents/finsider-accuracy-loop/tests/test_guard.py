@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 
 PACKAGE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -70,14 +71,26 @@ class SafetyGuardTests(unittest.TestCase):
     def test_phase_tool_policy_denies_unknown_and_mutating_mcp_tools(self):
         self.assertIsNone(tool_blocked_reason("spec", "StructuredOutput", {}))
         self.assertIsNotNone(tool_blocked_reason("code", "Bash", {"command": "git status"}))
-        self.assertIsNone(tool_blocked_reason("code", "Edit", {
-            "file_path": "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees/Mitch-be-ACC-1/src/report.js"
-        }))
+        active_worktree = (
+            "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees/Mitch-be-ACC-1"
+        )
+        with patch.dict(os.environ, {"FINSIDER_ACCURACY_WORKTREE": active_worktree}):
+            self.assertIsNone(tool_blocked_reason("code", "Edit", {
+                "file_path": active_worktree + "/src/report.js"
+            }))
+            self.assertIsNotNone(tool_blocked_reason("code", "Edit", {
+                "file_path": (
+                    "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees/Other/src/report.js"
+                )
+            }))
+            self.assertIsNotNone(tool_blocked_reason("code", "Write", {
+                "file_path": active_worktree + "/.git/config"
+            }))
+            self.assertIsNotNone(tool_blocked_reason("code", "Write", {
+                "file_path": active_worktree + "/.github/workflows/deploy.yml"
+            }))
         self.assertIsNotNone(tool_blocked_reason("code", "Edit", {
             "file_path": "/Users/dm3n/finsider-platform/Mitch-be/src/report.js"
-        }))
-        self.assertIsNotNone(tool_blocked_reason("code", "Write", {
-            "file_path": "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees/Mitch-be-ACC-1/.github/workflows/deploy.yml"
         }))
         self.assertIsNone(tool_blocked_reason(
             "spec", "mcp__finsider-verification__list_workspaces", {}
