@@ -156,6 +156,10 @@ def tool_blocked_reason(phase, tool_name, tool_input):
         if any(token in lowered for token in (
             "search", "get", "list", "createissue", "create_issue", "updateissue",
             "update_issue", "comment", "transitionissue", "transition_issue",
+            # Real Atlassian MCP tool names carry "Jira" inside the verb
+            # (createJiraIssue, editJiraIssue, transitionJiraIssue), which the
+            # bare tokens above never match.
+            "createjiraissue", "editjiraissue", "transitionjiraissue",
         )):
             return None
     return "MCP tool is outside the build-phase allowlist"
