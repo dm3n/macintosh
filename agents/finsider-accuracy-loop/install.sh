@@ -32,6 +32,7 @@ preflight() {
     "$SOURCE_DIR/run.py" \
     "$SOURCE_DIR/accuracy_loop/model.py" \
     "$SOURCE_DIR/accuracy_loop/claude.py" \
+    "$SOURCE_DIR/accuracy_loop/guard.py" \
     "$SOURCE_DIR/accuracy_loop/workspace.py" \
     "$SOURCE_DIR/accuracy_loop/supervisor.py"
 }

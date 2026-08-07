@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 CLAUDE_BIN = "/opt/homebrew/bin/claude"
 MODEL = "claude-sonnet-4-6"
+GUARD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guard.py")
 
 PRODUCTION_MUTATION_TOOLS = (
     "mcp__finsider-verification__review_discrepancy",
@@ -28,6 +29,21 @@ class AgentFailure(RuntimeError):
 
 def build_command(schema, phase, claude_bin=CLAUDE_BIN):
     disallowed = BUILD_PHASE_TOOLS if phase in ("build", "rework") else READ_ONLY_PHASE_TOOLS
+    settings = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "Bash",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "/usr/bin/python3 %s" % GUARD_PATH,
+                        }
+                    ],
+                }
+            ]
+        }
+    }
     return [
         claude_bin,
         "-p",
@@ -40,6 +56,8 @@ def build_command(schema, phase, claude_bin=CLAUDE_BIN):
         "json",
         "--json-schema",
         json.dumps(schema, separators=(",", ":")),
+        "--settings",
+        json.dumps(settings, separators=(",", ":")),
         "--dangerously-skip-permissions",
         "--disallowedTools",
         ",".join(disallowed),
@@ -96,12 +114,14 @@ class ClaudeRunner:
         self.process_factory = process_factory
         self.active_process = None
 
-    def _clean_environment(self):
-        return {
+    def _clean_environment(self, phase):
+        environment = {
             key: value
             for key, value in self.environ.items()
             if key not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
         }
+        environment["FINSIDER_ACCURACY_PHASE"] = phase
+        return environment
 
     def _trace_paths(self, phase):
         trace_dir = self.trace_dir or os.getcwd()
@@ -139,7 +159,7 @@ class ClaudeRunner:
             self.active_process = self.process_factory(
                 command,
                 cwd=cwd,
-                env=self._clean_environment(),
+                env=self._clean_environment(phase),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

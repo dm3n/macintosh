@@ -50,6 +50,7 @@ class ClaudeRunnerTests(unittest.TestCase):
         self.assertIn("--no-session-persistence", command)
         self.assertIn("--output-format", command)
         self.assertIn("--json-schema", command)
+        self.assertIn("--settings", command)
         self.assertIn("--disallowedTools", command)
 
     def test_real_child_receives_prompt_without_api_key_and_writes_trace(self):

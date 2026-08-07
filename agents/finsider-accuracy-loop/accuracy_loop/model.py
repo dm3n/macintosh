@@ -101,10 +101,14 @@ def _parse_timestamp(value, field, errors):
         errors.append("%s is missing" % field)
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         errors.append("%s is not an ISO-8601 timestamp" % field)
         return None
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        errors.append("%s must include a timezone" % field)
+        return None
+    return timestamp
 
 
 def validate_sweep(sweep):
@@ -116,14 +120,16 @@ def validate_sweep(sweep):
 
     active = sweep.get("active_workspaces")
     verified = sweep.get("verified_workspaces")
-    if not isinstance(active, int) or active <= 0:
+    if type(active) is not int or active <= 0:
         errors.append("active_workspaces must be a positive integer")
-    if active != verified:
+    if type(verified) is not int:
+        errors.append("verified_workspaces must be an integer")
+    if type(active) is int and type(verified) is int and active != verified:
         errors.append("workspace coverage is incomplete")
 
     for field in ("mismatches", "errors", "unknowns", "stale", "unresolved_surfaces"):
-        if sweep.get(field) != 0:
-            errors.append("%s must be zero" % field)
+        if type(sweep.get(field)) is not int or sweep.get(field) != 0:
+            errors.append("%s must be integer zero" % field)
 
     if sweep.get("onboarding_gate_verified") is not True:
         errors.append("onboarding accuracy gate is not verified")
@@ -137,7 +143,11 @@ def validate_sweep(sweep):
             if proof.get("status") != "proved":
                 errors.append("domain %s is not proved" % domain)
             evidence = proof.get("evidence")
-            if not isinstance(evidence, list) or not evidence:
+            if (
+                not isinstance(evidence, list)
+                or not evidence
+                or not all(isinstance(item, str) and item.strip() for item in evidence)
+            ):
                 errors.append("domain %s has no evidence" % domain)
 
     observed_at = _parse_timestamp(sweep.get("observed_at"), "observed_at", errors)
@@ -177,6 +187,11 @@ def record_accepted_sweep(state, sweep):
         if previous_watermark and current_watermark and current_watermark < previous_watermark:
             state["clean_sweeps"] = []
             state["last_sweep_errors"] = ["data watermark regressed between clean sweeps"]
+            return False
+        previous_observed = _parse_timestamp(previous.get("observed_at"), "observed_at", [])
+        current_observed = _parse_timestamp(sweep.get("observed_at"), "observed_at", [])
+        if previous_observed and current_observed and current_observed <= previous_observed:
+            state["last_sweep_errors"] = ["clean sweep observation did not advance"]
             return False
 
     clean_sweeps.append(copy.deepcopy(sweep))

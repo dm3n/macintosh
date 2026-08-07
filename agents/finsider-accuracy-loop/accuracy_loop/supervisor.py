@@ -309,9 +309,7 @@ class Supervisor:
             "recorded_at": utc_now(),
         })
 
-    def _cleanup_delivered_worktree(self, state):
-        worktree = self._worktree_from_state(state)
-        build = state.get("build_result") or {}
+    def _cleanup_delivered_worktree(self, worktree, build):
         if worktree and build.get("pr_url"):
             self.remove_worktree_fn(worktree, require_pushed=True)
 
@@ -350,6 +348,8 @@ class Supervisor:
         accepted = self._judge_accepts(state, result)
         work_unit = state["active_contract"]
         if accepted:
+            delivered_worktree = self._worktree_from_state(state)
+            delivered_build = state.get("build_result") or {}
             self._apply_coverage(state, result.get("coverage_updates"))
             full_sweep = result.get("full_sweep")
             completed = False
@@ -357,15 +357,18 @@ class Supervisor:
                 audited_sweep = copy.deepcopy(full_sweep)
                 audited_sweep["judge_verdict"] = "ACCEPT"
                 completed = record_accepted_sweep(state, audited_sweep)
-            self._cleanup_delivered_worktree(state)
-            self._append_ledger("judge", "ACCEPT", result["summary"])
             if completed:
                 state["phase"] = "judge"
+                state["worktree"] = None
                 save_state(self.state_path, state)
+                self._append_ledger("judge", "ACCEPT", result["summary"])
                 self._append_ledger("supervisor", "PROOF-COMPLETE", "Two clean sweeps accepted")
+                self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
                 return "complete"
             self._reset_cycle(state)
             save_state(self.state_path, state)
+            self._append_ledger("judge", "ACCEPT", result["summary"])
+            self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
             return "spec"
 
         if (

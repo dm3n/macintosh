@@ -58,6 +58,16 @@ def build_result(full_sweep=None):
     return result
 
 
+def delivered_code_result():
+    result = build_result()
+    result.update({
+        "branch": "agent/accuracy-acc-100-prove-report-parity",
+        "commit": "0123456789abcdef",
+        "pr_url": "https://github.com/dm3n/Mitch-be/pull/9999",
+    })
+    return result
+
+
 def complete_sweep(sweep_id):
     return {
         "sweep_id": sweep_id,
@@ -220,6 +230,31 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(runner.phases, ["spec", "build", "judge"])
         self.assertEqual(load_state(supervisor.state_path)["phase"], "rework")
 
+    def test_final_state_is_persisted_before_delivered_worktree_cleanup(self):
+        observed_states = []
+        runner = ScriptedRunner(
+            [spec_result("code"), delivered_code_result(), judge_result("ACCEPT")]
+        )
+        supervisor = Supervisor(
+            runtime_dir=self.runtime,
+            source_dir=self.source,
+            finsider_dir=self.finsider,
+            runner=runner,
+            create_worktree_fn=lambda *args, **kwargs: self.fake_worktree,
+            remove_worktree_fn=lambda *args, **kwargs: observed_states.append(
+                load_state(supervisor.state_path)
+            ) or True,
+            sleep_fn=lambda seconds: None,
+        )
+
+        supervisor.step()
+        supervisor.step()
+        supervisor.step()
+
+        self.assertEqual(len(observed_states), 1)
+        self.assertEqual(observed_states[0]["phase"], "spec")
+        self.assertIsNone(observed_states[0]["worktree"])
+
     def test_restart_resumes_recorded_judge_phase(self):
         supervisor, runner = self.supervisor([judge_result("BLOCKED")])
         supervisor.ensure_runtime()
@@ -256,6 +291,7 @@ class SupervisorTests(unittest.TestCase):
     def test_two_accepted_full_sweeps_exit_proof_complete(self):
         first = complete_sweep("sweep-1")
         second = complete_sweep("sweep-2")
+        second["observed_at"] = "2026-08-06T22:05:00Z"
         supervisor, _ = self.supervisor(
             [
                 spec_result("proof"), build_result(first), judge_result("ACCEPT", first),

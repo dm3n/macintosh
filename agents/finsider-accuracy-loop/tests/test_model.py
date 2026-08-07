@@ -65,9 +65,11 @@ class StateModelTests(unittest.TestCase):
 
     def test_two_distinct_complete_sweeps_finish(self):
         state = new_state()
+        second = complete_sweep("sweep-2")
+        second["observed_at"] = "2026-08-06T22:05:00Z"
 
         self.assertFalse(record_accepted_sweep(state, complete_sweep("sweep-1")))
-        self.assertTrue(record_accepted_sweep(state, complete_sweep("sweep-2")))
+        self.assertTrue(record_accepted_sweep(state, second))
 
         self.assertEqual(state["status"], "complete")
         self.assertEqual([item["sweep_id"] for item in state["clean_sweeps"]], ["sweep-1", "sweep-2"])
@@ -118,10 +120,39 @@ class StateModelTests(unittest.TestCase):
 
         errors = validate_sweep(sweep)
 
-        self.assertTrue(any("unknowns must be zero" in error for error in errors))
-        self.assertTrue(any("stale must be zero" in error for error in errors))
+        self.assertTrue(any("unknowns must be integer zero" in error for error in errors))
+        self.assertTrue(any("stale must be integer zero" in error for error in errors))
         self.assertTrue(any("workspace coverage" in error for error in errors))
         self.assertIn("onboarding accuracy gate is not verified", errors)
+
+    def test_rejects_boolean_or_float_counts_and_empty_evidence_values(self):
+        sweep = complete_sweep("sweep-1")
+        sweep["mismatches"] = False
+        sweep["verified_workspaces"] = 30.0
+        sweep["domains"][REQUIRED_DOMAINS[0]]["evidence"] = [""]
+
+        errors = validate_sweep(sweep)
+
+        self.assertTrue(any("verified_workspaces must be an integer" in error for error in errors))
+        self.assertTrue(any("mismatches must be integer zero" in error for error in errors))
+        self.assertTrue(any("has no evidence" in error for error in errors))
+
+    def test_rejects_timestamp_without_timezone(self):
+        sweep = complete_sweep("sweep-1")
+        sweep["observed_at"] = "2026-08-06T22:00:00"
+
+        self.assertTrue(any("timezone" in error for error in validate_sweep(sweep)))
+
+    def test_second_sweep_must_be_observed_later_than_first(self):
+        state = new_state()
+        first = complete_sweep("sweep-1")
+        second = complete_sweep("sweep-2")
+
+        self.assertFalse(record_accepted_sweep(state, first))
+        self.assertFalse(record_accepted_sweep(state, second))
+
+        self.assertEqual(state["status"], "running")
+        self.assertEqual(state["last_sweep_errors"], ["clean sweep observation did not advance"])
 
 
 if __name__ == "__main__":
