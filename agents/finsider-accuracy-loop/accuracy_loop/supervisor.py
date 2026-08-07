@@ -20,7 +20,7 @@ from .model import (
     save_state,
     utc_now,
 )
-from .workspace import Worktree, create_worktree, remove_clean_worktree
+from .workspace import REPOSITORIES, Worktree, create_worktree, remove_clean_worktree
 
 
 SPEC_SCHEMA = {
@@ -232,16 +232,52 @@ class Supervisor:
                 "updated_at": utc_now(),
             }
 
-    def _judge_accepts(self, result):
+    def _validate_contract(self, result):
+        work_unit = result.get("contract", {})
+        action = work_unit.get("action")
+        if result.get("decision") != action:
+            raise AgentFailure("spec decision and contract action disagree")
+        if work_unit.get("domain") not in REQUIRED_DOMAINS:
+            raise AgentFailure("spec selected an unknown accuracy domain")
+        if not work_unit.get("id") or not work_unit.get("title"):
+            raise AgentFailure("spec contract is missing its identity")
+        if not work_unit.get("idempotency_key"):
+            raise AgentFailure("spec contract is missing its idempotency key")
+        if not work_unit.get("acceptance_assertions") or not work_unit.get("verification_plan"):
+            raise AgentFailure("spec contract has no testable assertions")
+        target_repo = work_unit.get("target_repo")
+        if action == "code" and target_repo not in REPOSITORIES:
+            raise AgentFailure("code contract target repository is not allowlisted")
+        if action in ("operations", "proof") and target_repo is not None:
+            raise AgentFailure("non-code contract cannot target a repository")
+
+    def _judge_accepts(self, state, result):
         gates = result.get("hard_gates", {})
         required_gates = (
             "contract_met", "regression_evidence", "source_reconciled", "freshness", "safety"
         )
-        return (
+        accepted = (
             result.get("verdict") == "ACCEPT"
             and result.get("score", 0) >= 0.90
             and all(gates.get(gate) is True for gate in required_gates)
         )
+        if not accepted:
+            return False
+        work_unit = state.get("active_contract") or {}
+        build = state.get("build_result") or {}
+        if build.get("outcome") != "ready_for_judge" or not build.get("evidence"):
+            return False
+        if work_unit.get("action") == "code":
+            delivery_fields = (build.get("branch"), build.get("commit"), build.get("pr_url"))
+            if not all(isinstance(value, str) and value for value in delivery_fields):
+                return False
+            if not build.get("tests"):
+                return False
+            if work_unit.get("moves_customer_numbers") is True and build.get(
+                "moves_customer_numbers"
+            ) is not True:
+                return False
+        return True
 
     def _reset_cycle(self, state, wait_seconds=0):
         state["phase"] = "spec"
@@ -283,8 +319,7 @@ class Supervisor:
         result = self.runner.run(
             "spec", self._render_prompt("spec", state), SPEC_SCHEMA, self.finsider_dir
         )
-        if result.get("decision") != result.get("contract", {}).get("action"):
-            raise AgentFailure("spec decision and contract action disagree")
+        self._validate_contract(result)
         state["cycle"] += 1
         state["spec_result"] = result
         state["active_contract"] = result["contract"]
@@ -312,7 +347,7 @@ class Supervisor:
             "judge", self._render_prompt("judge", state), JUDGE_SCHEMA, self._phase_cwd(state)
         )
         state["judge_result"] = result
-        accepted = self._judge_accepts(result)
+        accepted = self._judge_accepts(state, result)
         work_unit = state["active_contract"]
         if accepted:
             self._apply_coverage(state, result.get("coverage_updates"))
@@ -334,7 +369,7 @@ class Supervisor:
             return "spec"
 
         if (
-            result.get("verdict") == "REJECT"
+            result.get("verdict") != "BLOCKED"
             and work_unit["action"] == "code"
             and state.get("rework_count", 0) == 0
         ):

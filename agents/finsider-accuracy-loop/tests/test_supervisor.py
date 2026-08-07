@@ -197,6 +197,29 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(load_state(supervisor.state_path)["worktree"]["path"],
                          self.fake_worktree_path)
 
+    def test_invalid_code_contract_retries_spec_without_crashing(self):
+        invalid = spec_result("code")
+        invalid["contract"]["target_repo"] = None
+        supervisor, runner = self.supervisor([invalid])
+
+        outcome = supervisor.step()
+
+        self.assertEqual(outcome, "retry")
+        self.assertEqual(runner.phases, ["spec"])
+        self.assertEqual(load_state(supervisor.state_path)["phase"], "spec")
+
+    def test_judge_cannot_accept_code_that_has_no_pr_handoff(self):
+        supervisor, runner = self.supervisor(
+            [spec_result("code"), build_result(), judge_result("ACCEPT")]
+        )
+
+        supervisor.step()
+        supervisor.step()
+        supervisor.step()
+
+        self.assertEqual(runner.phases, ["spec", "build", "judge"])
+        self.assertEqual(load_state(supervisor.state_path)["phase"], "rework")
+
     def test_restart_resumes_recorded_judge_phase(self):
         supervisor, runner = self.supervisor([judge_result("BLOCKED")])
         supervisor.ensure_runtime()
