@@ -9,21 +9,31 @@ PACKAGE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PACKAGE_ROOT)
 
 from accuracy_loop.claude import AgentFailure  # noqa: E402
-from accuracy_loop.model import REQUIRED_DOMAINS, load_state, new_state, save_state  # noqa: E402
+from accuracy_loop.model import REQUIRED_DOMAINS, load_state, save_state  # noqa: E402
 from accuracy_loop.supervisor import Supervisor  # noqa: E402
 from accuracy_loop.workspace import Worktree  # noqa: E402
 from tests.test_model import complete_sweep  # noqa: E402
 
 
 def contract(action="proof"):
+    work_kind = {
+        "code": "application_fix",
+        "operations": "data_fix",
+        "proof": "mismatch_proof",
+    }[action]
     return {
         "id": "ACC-100",
         "title": "Prove report parity",
         "action": action,
+        "work_kind": work_kind,
         "target_repo": "Mitch-be" if action == "code" else None,
         "domain": "api_ui_and_export_parity",
         "workspace_names": ["FusionTek (ws129)"],
         "root_cause_hypothesis": "The served surface may not share one source.",
+        "baseline_mismatch_count": 1,
+        "target_mismatch_count": 0,
+        "baseline_evidence_ids": ["verify-fixture:before"],
+        "application_paths": ["report_api"],
         "acceptance_assertions": ["All compared surfaces match exactly."],
         "verification_plan": ["Collect fresh source and served values."],
         "moves_customer_numbers": False,
@@ -40,6 +50,23 @@ def spec_result(action="proof"):
         "resolved_blocker_ids": [],
         "coverage_observations": {},
     }
+
+
+def full_sweep_spec(contract_id="ACC-SWEEP-1"):
+    result = spec_result("proof")
+    result["contract"].update({
+        "id": contract_id,
+        "title": "Run a full application accuracy sweep",
+        "work_kind": "full_sweep",
+        "baseline_mismatch_count": 0,
+        "baseline_evidence_ids": ["fleet-zero:before-sweep"],
+        "application_paths": [
+            "railz_ingestion", "canonical_storage", "classification",
+            "statement_snapshot", "financial_calculation", "report_api", "ui",
+            "export", "ai_output", "data_reconciliation",
+        ],
+    })
+    return result
 
 
 def build_result(full_sweep=None):
@@ -211,6 +238,30 @@ class SupervisorTests(unittest.TestCase):
         supervisor, _ = self.supervisor([])
         supervisor.ensure_runtime()
         state = load_state(supervisor.state_path)
+        preserved_coverage = copy.deepcopy(state["coverage"])
+        preserved_blockers = [{
+            "id": "ACC-BLOCKED",
+            "summary": "A real mismatch remains.",
+            "owner": "Accuracy",
+            "evidence_needed": ["A zero-mismatch rerun."],
+        }]
+        state["phase"] = "build"
+        state["cycle"] = 25
+        state["phase_attempts"] = 7
+        state["retry_at"] = "2026-08-07T18:36:41Z"
+        state["active_contract"] = contract("code")
+        state["spec_result"] = spec_result("code")
+        state["build_result"] = build_result()
+        state["judge_result"] = judge_result("REJECT")
+        state["action_intent"] = {
+            "idempotency_key": "finsider-accuracy:ACC-100:stale",
+            "started_at": "2026-08-07T18:00:00Z",
+            "receipts": [],
+        }
+        state["worktree"] = self.fake_worktree.to_dict()
+        state["rework_count"] = 1
+        state["last_error"] = "existing worktree has unexpected branch"
+        state["blockers"] = preserved_blockers
         state["clean_sweeps"] = [{"sweep_id": "old"}]
         state["status"] = "complete"
         save_state(supervisor.state_path, state)
@@ -224,11 +275,41 @@ class SupervisorTests(unittest.TestCase):
             self.assertEqual(contract_file.read(), "# Contract v2\n")
         self.assertEqual(state["status"], "running")
         self.assertEqual(state["clean_sweeps"], [])
+        self.assertEqual(state["phase"], "spec")
+        self.assertEqual(state["cycle"], 25)
+        self.assertEqual(state["phase_attempts"], 0)
+        self.assertIsNone(state["retry_at"])
+        self.assertIsNone(state["active_contract"])
+        self.assertIsNone(state["spec_result"])
+        self.assertIsNone(state["build_result"])
+        self.assertIsNone(state["judge_result"])
+        self.assertIsNone(state["action_intent"])
+        self.assertIsNone(state["worktree"])
+        self.assertEqual(state["rework_count"], 0)
+        self.assertIsNone(state["last_error"])
+        self.assertEqual(state["coverage"], preserved_coverage)
+        self.assertEqual(state["blockers"], preserved_blockers)
         self.assertFalse(os.path.exists(supervisor.contract_path + ".tmp"))
 
+    def test_contract_update_recovers_completed_ids_from_accepted_ledger(self):
+        supervisor, _ = self.supervisor([])
+        supervisor.ensure_runtime()
+        with open(supervisor.ledger_path, "a") as ledger:
+            ledger.write(
+                "- 2026-08-07T18:00:00Z | judge | ACCEPT | C51 widened flux decimals\n"
+            )
+        with open(os.path.join(self.source, "contract.md"), "w") as contract_file:
+            contract_file.write("# Contract v2\n")
+
+        supervisor.ensure_runtime()
+
+        self.assertIn("C51", load_state(supervisor.state_path)["completed_contract_ids"])
+
     def test_accepted_work_starts_next_spec_without_schedule_sleep(self):
+        next_result = spec_result("proof")
+        next_result["contract"]["id"] = "ACC-101"
         supervisor, runner = self.supervisor(
-            [spec_result("proof"), build_result(), judge_result("ACCEPT"), spec_result("proof")]
+            [spec_result("proof"), build_result(), judge_result("ACCEPT"), next_result]
         )
 
         supervisor.step()
@@ -238,6 +319,20 @@ class SupervisorTests(unittest.TestCase):
 
         self.assertEqual(runner.phases, ["spec", "build", "judge", "spec"])
         self.assertEqual(load_state(supervisor.state_path)["phase"], "build")
+
+    def test_accepted_work_records_its_contract_id_once(self):
+        supervisor, _ = self.supervisor(
+            [spec_result("proof"), build_result(), judge_result("ACCEPT")]
+        )
+
+        supervisor.step()
+        supervisor.step()
+        supervisor.step()
+
+        self.assertEqual(
+            load_state(supervisor.state_path)["completed_contract_ids"],
+            ["ACC-100"],
+        )
 
     def test_code_action_creates_worktree_before_build(self):
         supervisor, runner = self.supervisor([spec_result("code"), build_result()])
@@ -260,6 +355,45 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(outcome, "retry")
         self.assertEqual(runner.phases, ["spec"])
         self.assertEqual(load_state(supervisor.state_path)["phase"], "spec")
+
+    def test_spec_rejects_a_completed_contract_id(self):
+        supervisor, runner = self.supervisor([spec_result("proof")])
+        supervisor.ensure_runtime()
+        state = load_state(supervisor.state_path)
+        state["completed_contract_ids"] = ["ACC-100"]
+        save_state(supervisor.state_path, state)
+
+        outcome = supervisor.step()
+
+        state = load_state(supervisor.state_path)
+        self.assertEqual(outcome, "retry")
+        self.assertEqual(runner.phases, ["spec"])
+        self.assertEqual(state["phase"], "spec")
+        self.assertIn("already accepted", state["last_error"])
+
+    def test_spec_rejects_coverage_only_work_without_a_baseline_mismatch(self):
+        result = spec_result("code")
+        result["contract"]["baseline_mismatch_count"] = 0
+        supervisor, _ = self.supervisor([result])
+
+        outcome = supervisor.step()
+
+        state = load_state(supervisor.state_path)
+        self.assertEqual(outcome, "retry")
+        self.assertEqual(state["phase"], "spec")
+        self.assertIn("positive baseline mismatch", state["last_error"])
+
+    def test_spec_rejects_work_without_an_application_data_path(self):
+        result = spec_result("code")
+        result["contract"]["application_paths"] = []
+        supervisor, _ = self.supervisor([result])
+
+        outcome = supervisor.step()
+
+        state = load_state(supervisor.state_path)
+        self.assertEqual(outcome, "retry")
+        self.assertEqual(state["phase"], "spec")
+        self.assertIn("application data path", state["last_error"])
 
     def test_judge_cannot_accept_code_that_has_no_pr_handoff(self):
         supervisor, runner = self.supervisor(
@@ -302,7 +436,7 @@ class SupervisorTests(unittest.TestCase):
     def test_restart_resumes_recorded_judge_phase(self):
         supervisor, runner = self.supervisor([judge_result("BLOCKED")])
         supervisor.ensure_runtime()
-        state = new_state()
+        state = load_state(supervisor.state_path)
         state["phase"] = "judge"
         state["active_contract"] = contract("proof")
         state["build_result"] = build_result()
@@ -337,8 +471,12 @@ class SupervisorTests(unittest.TestCase):
         second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")
         supervisor, _ = self.supervisor(
             [
-                spec_result("proof"), build_result(first), judge_result("ACCEPT", first),
-                spec_result("proof"), build_result(second), judge_result("ACCEPT", second),
+                full_sweep_spec("ACC-SWEEP-1"),
+                build_result(first),
+                judge_result("ACCEPT", first),
+                full_sweep_spec("ACC-SWEEP-2"),
+                build_result(second),
+                judge_result("ACCEPT", second),
             ]
         )
 
@@ -357,7 +495,7 @@ class SupervisorTests(unittest.TestCase):
             "status": "complete",
         }]
         supervisor, _ = self.supervisor([
-            spec_result("proof"), build, judge_result("ACCEPT", sweep),
+            full_sweep_spec(), build, judge_result("ACCEPT", sweep),
         ])
 
         for _ in range(3):
@@ -423,7 +561,7 @@ class SupervisorTests(unittest.TestCase):
     def test_restart_keeps_action_intent_before_replaying_build(self):
         supervisor, runner = self.supervisor([build_result()])
         supervisor.ensure_runtime()
-        state = new_state()
+        state = load_state(supervisor.state_path)
         state["phase"] = "build"
         state["active_contract"] = contract("proof")
         state["active_contract"]["idempotency_key"] = "finsider-accuracy:ACC-100:stable"
@@ -444,7 +582,7 @@ class SupervisorTests(unittest.TestCase):
         result["resolved_blocker_ids"] = ["ACC-OLD"]
         supervisor, _ = self.supervisor([result])
         supervisor.ensure_runtime()
-        state = new_state()
+        state = load_state(supervisor.state_path)
         state["blockers"] = [
             {"id": "ACC-OLD", "summary": "Old", "owner": "Ops", "evidence_needed": ["sync"]},
             {"id": "ACC-KEEP", "summary": "Keep", "owner": "Eng", "evidence_needed": ["fix"]},

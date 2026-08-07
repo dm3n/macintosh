@@ -171,6 +171,18 @@ class StateModelTests(unittest.TestCase):
             self.assertEqual(migrated["blockers"][0]["id"], "ACC-LEGACY")
             self.assertEqual(migrated["blockers"][0]["evidence_needed"], ["Need a fresh sync."])
 
+    def test_existing_v2_state_defaults_completed_contract_ids(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "STATE.json")
+            existing = new_state()
+            existing.pop("completed_contract_ids", None)
+            with open(path, "w") as state_file:
+                json.dump(existing, state_file)
+
+            loaded = load_state(path)
+
+            self.assertEqual(loaded["completed_contract_ids"], [])
+
     def test_two_distinct_complete_sweeps_finish(self):
         state = new_state()
         second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")

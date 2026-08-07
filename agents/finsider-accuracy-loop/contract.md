@@ -4,7 +4,9 @@ This contract is absolute. An agent may identify a flaw in it, but may not weake
 
 ## Objective
 
-Run independent Claude spec, build, and judge contexts continuously until Finsider has fresh, reproducible, end-to-end data-accuracy proof for every active workspace and every data-bearing product surface.
+Run independent Claude spec, build, and judge contexts continuously until the application reproduces authoritative ingested Railz data without unexplained financial discrepancy for every active workspace and every data-bearing product surface.
+
+The loop exists to repair the Railz-to-customer application path. Known mismatches take priority over verification coverage work.
 
 ## What 100% means
 
@@ -22,6 +24,10 @@ Completion requires two consecutive full-application sweeps with different sweep
 10. No unresolved blocker remains in supervisor state.
 
 An explanation, Jira ticket, owner, open PR, CPA hold, vendor limitation, stale connection, or customer re-auth request is not accuracy. It is a blocker. The loop stays alive and continues other work.
+
+For accounting statements, the source of truth is the authoritative Railz report payload for the same workspace, connection, accounting method, currency, period, and reconstruction policy. For transaction surfaces, the source of truth is the complete, tenant-scoped, deduplicated set of ingested Railz records. A disagreement between bank and accounting sources remains a real unresolved discrepancy until the source data or ingestion path is reconciled. It cannot be hidden, relabelled, tolerated, or counted as accurate because an explanation exists.
+
+Zero discrepancy means exact equality under explicitly documented financial rounding rules. Skipped checks, warnings, tolerances, stale evidence, vendor limitations, and explained residuals do not count as zero.
 
 ## Required domains
 
@@ -48,15 +54,27 @@ Use these exact machine keys:
 19. `onboarding_accuracy_gate`
 20. `rounding_period_key_and_dimension_behavior`
 
-If a domain lacks a deterministic verifier, the missing verifier is the next accuracy defect. Build it before claiming proof.
+Existing verifier-category coverage is sufficient. Do not select coverage-only work and do not add a verifier category while a known financial mismatch remains. Verification code may change only when an existing measurement is demonstrably wrong and directly blocks remediation of a concrete mismatch.
 
 ## Loop roles
 
-- Spec gathers fresh reality and writes one bounded, testable work-unit contract. It does not change code or external state.
-- Build performs only that contract. Code uses an isolated worktree and ends in a PR. Operations and proof actions are idempotent.
-- Judge starts clean, assumes the result is wrong, and attempts to disprove it with direct evidence.
+- Spec gathers fresh reality and writes one bounded, testable work-unit contract for a measured financial mismatch. It does not change code or external state.
+- Build performs only that contract against the Railz ingestion or downstream application path. Code uses an isolated worktree and ends in a PR. Operations and proof actions are idempotent.
+- Judge starts clean, assumes the result is wrong, and attempts to disprove the before-to-zero result with direct evidence.
+
+Every ordinary work unit records a positive `baseline_mismatch_count`, a `target_mismatch_count` of zero, immutable `baseline_evidence_ids`, and one or more affected `application_paths`. The only cycle allowed to start at zero is a `full_sweep` after all known mismatch measurements are zero.
+
+Allowed work kinds are `application_fix`, `data_fix`, `mismatch_proof`, and `full_sweep`. There is no verifier work kind. Contract IDs are unique and may never be reused after acceptance.
 
 One rejected code build gets one rework. A second rejection becomes a blocker and the loop advances to other work.
+
+Priority order is:
+
+1. The highest-materiality customer-visible mismatch or cross-tenant risk.
+2. A shared Railz ingestion, scoping, classification, snapshot, calculation, serialization, or presentation defect that causes multiple mismatches.
+3. An explicitly authorized and auditable data reconciliation operation.
+4. A fresh rerun proving that a shipped fix or safe operation moved the scoped mismatch to zero.
+5. A full-application sweep only after every known mismatch is zero.
 
 ## Required product surfaces
 
@@ -74,6 +92,7 @@ Required transaction layers are exactly `original`, `adjusted`, and `bridge`. Re
 - A verification-run trigger or dry-run recalculation is allowed only when it cannot change customer books or persist discrepancy-review rows. The production `scan_discrepancies` tool is not allowed.
 - A customer-number-changing PR is labelled `NEEDS CPA REVIEW` and held for review.
 - Every code fix begins with a reproducing test, runs targeted verification, and preserves tenant and workspace scoping.
+- A code contract changes the actual application data path. Measurement-only changes are allowed solely for a demonstrated regression that directly blocks the contracted mismatch fix.
 - Every user-facing communication follows the Finsider Plain English block, names client companies with workspace IDs, and contains no AI attribution.
 - Check for an existing branch, PR, ticket, comment, or verification job carrying the work unit's idempotency key before creating one.
 - The supervisor derives the idempotency key from the accepted contract and persists the action intent before execution. External jobs and artifacts return durable receipts for crash-resume polling.
@@ -103,7 +122,7 @@ The score is the weighted sum of:
 - Freshness and provenance: 0.10
 - Safety and delivery discipline: 0.10
 
-`ACCEPT` requires a score of at least `0.90` plus all five hard gates: contract met, regression evidence, source reconciled, freshness, and safety. Tolerance widening, sampling, explained residuals, stale evidence, self-authored evidence without reproduction, or missing surfaces fail a hard gate.
+`ACCEPT` requires a score of at least `0.90` plus all five hard gates: contract met, regression evidence, source reconciled, freshness, and safety. The judge must reproduce a positive before count and a zero after count for the contracted mismatch scope. Tolerance widening, sampling, explained residuals, stale evidence, self-authored evidence without reproduction, or missing surfaces fail a hard gate.
 
 ## Full-sweep evidence object
 

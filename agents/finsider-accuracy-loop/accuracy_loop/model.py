@@ -84,6 +84,7 @@ def new_state():
             for domain in REQUIRED_DOMAINS
         },
         "blockers": [],
+        "completed_contract_ids": [],
         "clean_sweeps": [],
         "contract_sha256": None,
         "last_error": None,
@@ -99,6 +100,7 @@ def load_state(path):
         state = _migrate_v1_state(state)
     if state.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("unsupported state schema version")
+    state.setdefault("completed_contract_ids", [])
     return state
 
 
@@ -127,6 +129,7 @@ def _migrate_v1_state(state):
         })
         blockers.append(blocker)
     migrated["blockers"] = blockers
+    migrated.setdefault("completed_contract_ids", [])
     migrated.setdefault("action_intent", None)
     migrated.setdefault("contract_sha256", None)
     migrated["schema_version"] = SCHEMA_VERSION

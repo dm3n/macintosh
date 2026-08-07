@@ -5,6 +5,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import signal
 import subprocess
 import time
@@ -186,6 +187,19 @@ RECEIPT_SCHEMA = {
     },
 }
 
+APPLICATION_PATHS = (
+    "railz_ingestion",
+    "canonical_storage",
+    "classification",
+    "statement_snapshot",
+    "financial_calculation",
+    "report_api",
+    "ui",
+    "export",
+    "ai_output",
+    "data_reconciliation",
+)
+
 
 SPEC_SCHEMA = {
     "type": "object",
@@ -199,18 +213,33 @@ SPEC_SCHEMA = {
         "contract": {
             "type": "object",
             "required": [
-                "id", "title", "action", "target_repo", "domain", "workspace_names",
-                "root_cause_hypothesis", "acceptance_assertions", "verification_plan",
-                "moves_customer_numbers", "idempotency_key",
+                "id", "title", "action", "work_kind", "target_repo", "domain",
+                "workspace_names", "root_cause_hypothesis", "baseline_mismatch_count",
+                "target_mismatch_count", "baseline_evidence_ids", "application_paths",
+                "acceptance_assertions", "verification_plan", "moves_customer_numbers",
+                "idempotency_key",
             ],
             "properties": {
                 "id": {"type": "string"},
                 "title": {"type": "string"},
                 "action": {"enum": ["code", "operations", "proof"]},
+                "work_kind": {"enum": [
+                    "application_fix", "data_fix", "mismatch_proof", "full_sweep",
+                ]},
                 "target_repo": {"type": ["string", "null"]},
                 "domain": {"enum": list(REQUIRED_DOMAINS)},
                 "workspace_names": {"type": "array", "items": {"type": "string"}},
                 "root_cause_hypothesis": {"type": "string"},
+                "baseline_mismatch_count": {"type": "integer", "minimum": 0},
+                "target_mismatch_count": {"enum": [0]},
+                "baseline_evidence_ids": {
+                    "type": "array", "items": {"type": "string"}, "minItems": 1,
+                },
+                "application_paths": {
+                    "type": "array",
+                    "items": {"enum": list(APPLICATION_PATHS)},
+                    "minItems": 1,
+                },
                 "acceptance_assertions": {"type": "array", "items": {"type": "string"}},
                 "verification_plan": {"type": "array", "items": {"type": "string"}},
                 "moves_customer_numbers": {"type": "boolean"},
@@ -347,6 +376,12 @@ class Supervisor:
         else:
             state = load_state(self.state_path)
             if state.get("contract_sha256") != contract_hash:
+                completed_contract_ids = list(state.get("completed_contract_ids", []))
+                for contract_id in self._accepted_contract_ids_from_ledger():
+                    if contract_id not in completed_contract_ids:
+                        completed_contract_ids.append(contract_id)
+                self._reset_cycle(state)
+                state["completed_contract_ids"] = completed_contract_ids
                 state["contract_sha256"] = contract_hash
                 state["clean_sweeps"] = []
                 state["status"] = "running"
@@ -357,6 +392,20 @@ class Supervisor:
         if not os.path.exists(self.ledger_path):
             with open(self.ledger_path, "w") as ledger:
                 ledger.write("# Finsider Continuous Accuracy Loop Ledger\n\n")
+
+    def _accepted_contract_ids_from_ledger(self):
+        if not os.path.exists(self.ledger_path):
+            return []
+        accepted_ids = []
+        with open(self.ledger_path) as ledger:
+            for line in ledger:
+                fields = [field.strip() for field in line.split("|", 3)]
+                if len(fields) != 4 or fields[1:3] != ["judge", "ACCEPT"]:
+                    continue
+                match = re.search(r"\b(?:C\d+|ACC-[A-Za-z0-9][A-Za-z0-9-]*)\b", fields[3])
+                if match and match.group(0) not in accepted_ids:
+                    accepted_ids.append(match.group(0))
+        return accepted_ids
 
     def _append_ledger(self, phase, outcome, summary):
         safe_summary = " ".join(str(summary).splitlines()).strip()
@@ -376,6 +425,7 @@ class Supervisor:
             "phase": phase,
             "coverage": state.get("coverage"),
             "blockers": state.get("blockers"),
+            "completed_contract_ids": state.get("completed_contract_ids"),
             "active_contract": state.get("active_contract"),
             "spec_result": state.get("spec_result"),
             "build_result": state.get("build_result"),
@@ -431,7 +481,7 @@ class Supervisor:
                 "updated_at": utc_now(),
             }
 
-    def _validate_contract(self, result):
+    def _validate_contract(self, result, state):
         work_unit = result.get("contract", {})
         action = work_unit.get("action")
         if result.get("decision") != action:
@@ -440,6 +490,37 @@ class Supervisor:
             raise AgentFailure("spec selected an unknown accuracy domain")
         if not work_unit.get("id") or not work_unit.get("title"):
             raise AgentFailure("spec contract is missing its identity")
+        if work_unit.get("id") in state.get("completed_contract_ids", []):
+            raise AgentFailure("spec contract ID was already accepted and cannot be reused")
+        work_kind = work_unit.get("work_kind")
+        allowed_work_kinds = {
+            "code": {"application_fix"},
+            "operations": {"data_fix"},
+            "proof": {"mismatch_proof", "full_sweep"},
+        }
+        if work_kind not in allowed_work_kinds.get(action, set()):
+            raise AgentFailure("spec work kind does not match its action")
+        baseline_mismatches = work_unit.get("baseline_mismatch_count")
+        if type(baseline_mismatches) is not int or baseline_mismatches < 0:
+            raise AgentFailure("spec contract has no valid baseline mismatch count")
+        if work_kind != "full_sweep" and baseline_mismatches == 0:
+            raise AgentFailure("ordinary work requires a positive baseline mismatch count")
+        if work_unit.get("target_mismatch_count") != 0:
+            raise AgentFailure("spec contract target mismatch count must be zero")
+        evidence_ids = work_unit.get("baseline_evidence_ids")
+        if not (
+            isinstance(evidence_ids, list)
+            and evidence_ids
+            and all(isinstance(item, str) and item.strip() for item in evidence_ids)
+        ):
+            raise AgentFailure("spec contract has no baseline mismatch evidence")
+        application_paths = work_unit.get("application_paths")
+        if not (
+            isinstance(application_paths, list)
+            and application_paths
+            and all(path in APPLICATION_PATHS for path in application_paths)
+        ):
+            raise AgentFailure("spec contract has no valid application data path")
         if not work_unit.get("acceptance_assertions") or not work_unit.get("verification_plan"):
             raise AgentFailure("spec contract has no testable assertions")
         target_repo = work_unit.get("target_repo")
@@ -453,7 +534,9 @@ class Supervisor:
             key: work_unit.get(key)
             for key in (
                 "id", "title", "action", "target_repo", "domain", "workspace_names",
-                "acceptance_assertions", "verification_plan", "moves_customer_numbers",
+                "work_kind", "baseline_mismatch_count", "target_mismatch_count",
+                "baseline_evidence_ids", "application_paths", "acceptance_assertions",
+                "verification_plan", "moves_customer_numbers",
             )
         }
         digest = hashlib.sha256(
@@ -568,6 +651,11 @@ class Supervisor:
         else:
             state["retry_at"] = None
 
+    def _record_completed_contract(self, state, contract_id):
+        completed_contract_ids = state.setdefault("completed_contract_ids", [])
+        if contract_id not in completed_contract_ids:
+            completed_contract_ids.append(contract_id)
+
     def _record_blocker(self, state, result):
         work_unit = state.get("active_contract") or {}
         external = result.get("blockers", [])
@@ -597,7 +685,7 @@ class Supervisor:
         result = self.runner.run(
             "spec", self._render_prompt("spec", state), SPEC_SCHEMA, self.finsider_dir
         )
-        self._validate_contract(result)
+        self._validate_contract(result, state)
         result["contract"]["idempotency_key"] = self._derive_idempotency_key(
             result["contract"]
         )
@@ -653,6 +741,7 @@ class Supervisor:
         if accepted:
             delivered_worktree = self._worktree_from_state(state)
             delivered_build = state.get("build_result") or {}
+            self._record_completed_contract(state, work_unit["id"])
             self._resolve_accepted_blockers(state, result)
             self._apply_coverage(state, result.get("coverage_updates"))
             full_sweep = result.get("full_sweep")
@@ -671,13 +760,17 @@ class Supervisor:
                 state["phase"] = "judge"
                 state["worktree"] = None
                 save_state(self.state_path, state)
-                self._append_ledger("judge", "ACCEPT", result["summary"])
+                self._append_ledger(
+                    "judge", "ACCEPT", "%s: %s" % (work_unit["id"], result["summary"])
+                )
                 self._append_ledger("supervisor", "PROOF-COMPLETE", "Two clean sweeps accepted")
                 self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
                 return "complete"
             self._reset_cycle(state)
             save_state(self.state_path, state)
-            self._append_ledger("judge", "ACCEPT", result["summary"])
+            self._append_ledger(
+                "judge", "ACCEPT", "%s: %s" % (work_unit["id"], result["summary"])
+            )
             self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
             return "spec"
 
