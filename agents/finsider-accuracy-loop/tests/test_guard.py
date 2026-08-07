@@ -68,6 +68,8 @@ class SafetyGuardTests(unittest.TestCase):
                 self.assertIsNone(blocked_reason("build", command))
 
     def test_phase_tool_policy_denies_unknown_and_mutating_mcp_tools(self):
+        self.assertIsNone(tool_blocked_reason("spec", "StructuredOutput", {}))
+        self.assertIsNotNone(tool_blocked_reason("code", "Bash", {"command": "git status"}))
         self.assertIsNone(tool_blocked_reason(
             "spec", "mcp__finsider-verification__list_workspaces", {}
         ))
@@ -78,13 +80,13 @@ class SafetyGuardTests(unittest.TestCase):
             "judge", "mcp__vercel__deploy", {"production": True}
         ))
         self.assertIsNotNone(tool_blocked_reason(
-            "build", "mcp__finsider-verification__review_discrepancy", {}
+            "code", "mcp__finsider-verification__review_discrepancy", {}
         ))
         self.assertIsNotNone(tool_blocked_reason(
-            "build", "mcp__finsider-verification__reconcile_deletions", {"apply": True}
+            "proof", "mcp__finsider-verification__reconcile_deletions", {"apply": True}
         ))
         self.assertIsNone(tool_blocked_reason(
-            "build", "mcp__finsider-verification__reconcile_deletions", {"apply": False}
+            "proof", "mcp__finsider-verification__reconcile_deletions", {"apply": False}
         ))
 
     def test_hook_process_denies_with_exit_two(self):
@@ -93,7 +95,7 @@ class SafetyGuardTests(unittest.TestCase):
             "tool_name": "Bash",
             "tool_input": {"command": "gh pr merge 1062"},
         })
-        environment = dict(os.environ, FINSIDER_ACCURACY_PHASE="build")
+        environment = dict(os.environ, FINSIDER_ACCURACY_PHASE="code")
 
         result = subprocess.run(
             [sys.executable, GUARD], input=payload, text=True, capture_output=True, env=environment

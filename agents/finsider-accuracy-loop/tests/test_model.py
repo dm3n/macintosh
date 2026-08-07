@@ -54,6 +54,13 @@ def complete_sweep(sweep_id, observed_at="2026-08-06T22:00:00Z"):
         "stale": 0,
         "unresolved_surfaces": 0,
         "onboarding_gate_verified": True,
+        "authoritative_roster": {
+            "kind": "authoritative_workspace_roster",
+            "id": "roster:%s" % sweep_id,
+            "source": "finsider-verification:list_workspaces",
+            "observed_at": observed_at,
+            "workspace_ids": ["ws129", "ws130", "ws999"],
+        },
         "workspace_roster": [
             {
                 "workspace_id": "ws129",
@@ -128,6 +135,27 @@ class StateModelTests(unittest.TestCase):
             self.assertFalse(os.path.exists(path + ".tmp"))
             with open(path) as state_file:
                 json.load(state_file)
+
+    def test_v1_state_migration_assigns_stable_blocker_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "STATE.json")
+            legacy = new_state()
+            legacy["schema_version"] = 1
+            legacy.pop("action_intent")
+            legacy.pop("contract_sha256")
+            legacy["blockers"] = [{
+                "contract_id": "ACC-LEGACY",
+                "summary": "Old blocker",
+                "findings": ["Need a fresh sync."],
+            }]
+            with open(path, "w") as state_file:
+                json.dump(legacy, state_file)
+
+            migrated = load_state(path)
+
+            self.assertEqual(migrated["schema_version"], 2)
+            self.assertEqual(migrated["blockers"][0]["id"], "ACC-LEGACY")
+            self.assertEqual(migrated["blockers"][0]["evidence_needed"], ["Need a fresh sync."])
 
     def test_two_distinct_complete_sweeps_finish(self):
         state = new_state()
@@ -242,6 +270,14 @@ class StateModelTests(unittest.TestCase):
         self.assertIn("scope is missing", validate_sweep(missing_scope))
         self.assertIn("surface set is incomplete", validate_sweep(missing_surface))
 
+    def test_roster_must_match_authoritative_inventory_identity(self):
+        sweep = complete_sweep("sweep-1")
+        sweep["authoritative_roster"]["workspace_ids"] = ["ws129", "ws999"]
+
+        self.assertIn(
+            "workspace_roster does not match the authoritative roster", validate_sweep(sweep)
+        )
+
     def test_domain_evidence_must_cover_every_active_workspace(self):
         sweep = complete_sweep("sweep-1")
         sweep["domains"][REQUIRED_DOMAINS[0]]["evidence"][0]["workspace_ids"] = ["ws129"]
@@ -251,6 +287,30 @@ class StateModelTests(unittest.TestCase):
         self.assertIn(
             "domain %s does not cover every active workspace" % REQUIRED_DOMAINS[0], errors
         )
+
+    def test_evidence_must_be_fresh_for_each_workspace_and_canonically_scoped(self):
+        stale = complete_sweep("sweep-1")
+        stale["domains"][REQUIRED_DOMAINS[0]]["evidence"][0][
+            "observed_at"
+        ] = "2026-08-06T20:00:00Z"
+        invalid_scope = complete_sweep("sweep-2")
+        invalid_scope["domains"][REQUIRED_DOMAINS[0]]["evidence"][0]["layers"] = [
+            "invented"
+        ]
+
+        stale_errors = validate_sweep(stale)
+        scope_errors = validate_sweep(invalid_scope)
+
+        self.assertTrue(any("predates workspace" in error for error in stale_errors))
+        self.assertTrue(any("layer scope is not canonical" in error for error in scope_errors))
+
+    def test_future_sweep_or_evidence_is_rejected(self):
+        sweep = complete_sweep("sweep-future", "2099-08-06T22:00:00Z")
+
+        errors = validate_sweep(sweep)
+
+        self.assertIn("observed_at cannot be in the future", errors)
+        self.assertTrue(any("future observation" in error for error in errors))
 
     def test_second_sweep_requires_new_per_workspace_verification_ids(self):
         state = new_state()
@@ -266,6 +326,35 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(state["clean_sweeps"], [])
         self.assertIn("reused its verification_id", state["last_sweep_errors"][0])
 
+    def test_second_sweep_requires_a_new_authoritative_roster_snapshot(self):
+        state = new_state()
+        first = complete_sweep("sweep-1")
+        second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")
+        second["authoritative_roster"]["id"] = first["authoritative_roster"]["id"]
+
+        self.assertFalse(record_accepted_sweep(state, first))
+        self.assertFalse(record_accepted_sweep(state, second))
+
+        self.assertEqual(state["clean_sweeps"], [])
+        self.assertEqual(
+            state["last_sweep_errors"], ["authoritative roster snapshot was replayed"]
+        )
+
+    def test_second_sweep_cannot_reuse_domain_or_surface_evidence(self):
+        state = new_state()
+        first = complete_sweep("sweep-1")
+        second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")
+        reused_id = first["domains"][REQUIRED_DOMAINS[0]]["evidence"][0]["id"]
+        second["domains"][REQUIRED_DOMAINS[0]]["evidence"][0]["id"] = reused_id
+
+        self.assertFalse(record_accepted_sweep(state, first))
+        self.assertFalse(record_accepted_sweep(state, second))
+
+        self.assertEqual(state["clean_sweeps"], [])
+        self.assertEqual(
+            state["last_sweep_errors"], ["proof evidence was replayed between clean sweeps"]
+        )
+
     def test_roster_change_restarts_consecutive_proof_sequence(self):
         state = new_state()
         first = complete_sweep("sweep-1")
@@ -277,6 +366,7 @@ class StateModelTests(unittest.TestCase):
             "included": False,
             "exclusion_reason": "Marked test in the authoritative roster.",
         })
+        second["authoritative_roster"]["workspace_ids"].append("ws1000")
 
         self.assertFalse(record_accepted_sweep(state, first))
         self.assertFalse(record_accepted_sweep(state, second))

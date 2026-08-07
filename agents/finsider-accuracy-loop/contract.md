@@ -77,7 +77,7 @@ Required transaction layers are exactly `original`, `adjusted`, and `bridge`. Re
 - Every user-facing communication follows the Finsider Plain English block, names client companies with workspace IDs, and contains no AI attribution.
 - Check for an existing branch, PR, ticket, comment, or verification job carrying the work unit's idempotency key before creating one.
 - The supervisor derives the idempotency key from the accepted contract and persists the action intent before execution. External jobs and artifacts return durable receipts for crash-resume polling.
-- Child roles run with phase-specific tool allowlists, an all-tool pre-use safety hook, and deployment/production credentials removed from their environment.
+- Child roles have no general shell. They run with phase-specific built-in and MCP allowlists, an all-tool pre-use safety hook, a strict MCP server list, and deployment/production credentials removed from their environment. Tests and delivery use a narrow local service that validates arguments and can only test, inspect, commit, push the current `agent/accuracy-*` branch, and create or reuse an unmerged PR.
 - Preserve unrelated dirty files and existing worktrees.
 
 ## Writable repositories
@@ -122,15 +122,16 @@ A completion candidate must contain:
 - `stale`
 - `unresolved_surfaces`
 - `onboarding_gate_verified`
-- `workspace_roster`, with a unique ID, name, lifecycle, and inclusion decision for every workspace; active entries also carry `latest_sync_at`, `verification_id`, and `verified_at`
+- `authoritative_roster`, identified by a fresh immutable source snapshot from `finsider-verification:list_workspaces`
+- `workspace_roster`, with a unique ID, name, lifecycle, and inclusion decision for every workspace in that authoritative snapshot; active entries also carry `latest_sync_at`, `verification_id`, and `verified_at`
 - `domains`, keyed by all 20 required domain keys, with `{ "status": "proved", "evidence": [ ... ] }`
 - `scope.periods`, proving `all_supported_history`
 - `scope.layers`, proving `original`, `adjusted`, and `bridge`
 - `scope.dimensions`, proving `workspace` and `tracking_category`
 - `scope.surfaces`, keyed by every required product surface with proved evidence
 
-Every evidence entry is structured as `{kind, id, source, observed_at, workspace_ids, periods, layers, dimensions, surfaces}`. Lists are non-empty, timestamps include timezones, and the combined evidence for each domain and surface covers every active workspace.
+Every evidence entry is structured as `{kind, id, source, observed_at, workspace_ids, periods, layers, dimensions, surfaces}`. Lists are non-empty, timestamps include timezones, scope values come from the canonical contract sets, and the combined evidence for each domain and surface covers every active workspace. An evidence timestamp cannot be in the future or after the sweep, and must be at or after both the latest deployment and every referenced workspace's latest sync.
 
-The second clean sweep must retain the same authoritative roster, advance its observation time and global watermarks, and use a new verification ID with a later verification timestamp for every active workspace. A replay, stale remote branch, aggregate count, opaque evidence string, or roster change cannot complete the sequence.
+The second clean sweep must retain the same authoritative roster, advance its observation time without regressing global watermarks, use a new authoritative roster snapshot, use a new verification ID with a later verification timestamp for every active workspace, and use no evidence identity from the first sweep. A replay, stale remote branch, aggregate count, opaque evidence string, or roster change cannot complete the sequence.
 
 The supervisor, not an agent, decides whether two accepted sweeps meet completion.

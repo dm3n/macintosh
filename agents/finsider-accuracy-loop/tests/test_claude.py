@@ -55,11 +55,31 @@ class ClaudeRunnerTests(unittest.TestCase):
         self.assertIn("--settings", command)
         self.assertIn("--disallowedTools", command)
         self.assertIn("--allowedTools", command)
+        self.assertIn("--strict-mcp-config", command)
+        self.assertIn("--mcp-config", command)
         self.assertIn("--permission-mode", command)
         self.assertEqual(command[command.index("--permission-mode") + 1], "dontAsk")
         self.assertNotIn("--dangerously-skip-permissions", command)
         settings = json.loads(command[command.index("--settings") + 1])
         self.assertEqual(settings["hooks"]["PreToolUse"][0]["matcher"], "*")
+        self.assertNotIn("Bash", command[command.index("--tools") + 1].split(","))
+
+    def test_code_phase_exposes_only_narrow_delivery_tools(self):
+        command = build_command(SCHEMA, phase="code")
+        allowed = command[command.index("--allowedTools") + 1].split(",")
+
+        self.assertIn("Edit", allowed)
+        self.assertIn("mcp__finsider-accuracy-tools__push_branch", allowed)
+        self.assertNotIn("Bash", allowed)
+        self.assertNotIn("mcp__vercel__deploy", allowed)
+
+    def test_proof_phase_cannot_edit_or_deliver_code(self):
+        command = build_command(SCHEMA, phase="proof")
+        allowed = command[command.index("--allowedTools") + 1].split(",")
+
+        self.assertNotIn("Edit", allowed)
+        self.assertNotIn("mcp__finsider-accuracy-tools__push_branch", allowed)
+        self.assertIn("mcp__finsider-verification__trigger_verification_run", allowed)
 
     def test_real_child_receives_prompt_without_api_key_and_writes_trace(self):
         with tempfile.TemporaryDirectory() as directory:

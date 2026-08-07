@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 CLAUDE_BIN = "/opt/homebrew/bin/claude"
 MODEL = "claude-sonnet-4-6"
 GUARD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "guard.py")
+SAFE_TOOLS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "safe_tools.py")
+VERIFICATION_MCP_PATH = "/Users/dm3n/finsider-platform/verification-mcp/index.mjs"
 
 PRODUCTION_MUTATION_TOOLS = (
     "mcp__finsider-verification__review_discrepancy",
@@ -30,7 +32,7 @@ VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS + (
     "mcp__finsider-verification__scan_discrepancies",
     "mcp__finsider-verification__reconcile_deletions",
 )
-READ_BUILTINS = ("Read", "Glob", "Grep", "Bash", "WebFetch", "WebSearch")
+READ_BUILTINS = ("Read", "Glob", "Grep", "WebFetch", "WebSearch", "StructuredOutput")
 BUILD_BUILTINS = READ_BUILTINS + ("Edit", "Write", "NotebookEdit")
 READ_ONLY_PHASE_TOOLS = ("Edit", "Write", "NotebookEdit", "Agent") + PRODUCTION_MUTATION_TOOLS
 BUILD_PHASE_TOOLS = ("Agent",) + PRODUCTION_MUTATION_TOOLS
@@ -55,6 +57,16 @@ SENSITIVE_ENV_FRAGMENTS = (
     "REDIS_URL",
 )
 
+SAFE_READ_TOOLS = (
+    "mcp__finsider-accuracy-tools__inspect_repo",
+    "mcp__finsider-accuracy-tools__run_test",
+)
+SAFE_DELIVERY_TOOLS = SAFE_READ_TOOLS + (
+    "mcp__finsider-accuracy-tools__commit_changes",
+    "mcp__finsider-accuracy-tools__push_branch",
+    "mcp__finsider-accuracy-tools__create_or_view_pr",
+)
+
 
 class AgentFailure(RuntimeError):
     def __init__(self, message, transient=False):
@@ -63,13 +75,38 @@ class AgentFailure(RuntimeError):
 
 
 def build_command(schema, phase, claude_bin=CLAUDE_BIN):
-    disallowed = BUILD_PHASE_TOOLS if phase in ("build", "rework") else READ_ONLY_PHASE_TOOLS
-    allowed = (
-        BUILD_BUILTINS + VERIFICATION_BUILD_TOOLS + ("mcp__atlassian__*",)
-        if phase in ("build", "rework")
-        else READ_BUILTINS + VERIFICATION_READ_TOOLS
-    )
-    builtins = BUILD_BUILTINS if phase in ("build", "rework") else READ_BUILTINS
+    if phase in ("code", "rework"):
+        disallowed = BUILD_PHASE_TOOLS
+        allowed = BUILD_BUILTINS + VERIFICATION_BUILD_TOOLS + SAFE_DELIVERY_TOOLS
+        builtins = BUILD_BUILTINS
+    elif phase == "proof":
+        disallowed = READ_ONLY_PHASE_TOOLS
+        allowed = READ_BUILTINS + VERIFICATION_BUILD_TOOLS + SAFE_READ_TOOLS
+        builtins = READ_BUILTINS
+    elif phase == "operations":
+        disallowed = READ_ONLY_PHASE_TOOLS
+        allowed = READ_BUILTINS + VERIFICATION_READ_TOOLS + ("mcp__atlassian__*",)
+        builtins = READ_BUILTINS
+    else:
+        disallowed = READ_ONLY_PHASE_TOOLS
+        allowed = READ_BUILTINS + VERIFICATION_READ_TOOLS + SAFE_READ_TOOLS
+        builtins = READ_BUILTINS
+    mcp_config = {
+        "mcpServers": {
+            "finsider-accuracy-tools": {
+                "command": "/usr/bin/python3",
+                "args": [SAFE_TOOLS_PATH],
+            },
+            "finsider-verification": {
+                "command": "node",
+                "args": [VERIFICATION_MCP_PATH],
+            },
+            "atlassian": {
+                "type": "http",
+                "url": "https://mcp.atlassian.com/v1/mcp/authv2",
+            },
+        }
+    }
     settings = {
         "hooks": {
             "PreToolUse": [
@@ -99,6 +136,9 @@ def build_command(schema, phase, claude_bin=CLAUDE_BIN):
         json.dumps(schema, separators=(",", ":")),
         "--settings",
         json.dumps(settings, separators=(",", ":")),
+        "--mcp-config",
+        json.dumps(mcp_config, separators=(",", ":")),
+        "--strict-mcp-config",
         "--permission-mode",
         "dontAsk",
         "--tools",
@@ -195,8 +235,9 @@ class ClaudeRunner:
             except ProcessLookupError:
                 pass
 
-    def run(self, phase, prompt, schema, cwd):
-        command = build_command(schema, phase, claude_bin=self.claude_bin)
+    def run(self, phase, prompt, schema, cwd, capability_phase=None):
+        capability_phase = capability_phase or phase
+        command = build_command(schema, capability_phase, claude_bin=self.claude_bin)
         stdout_path, stderr_path = self._trace_paths(phase)
         process = None
         self._cancel_requested = False
@@ -204,7 +245,7 @@ class ClaudeRunner:
             process = self.process_factory(
                 command,
                 cwd=cwd,
-                env=self._clean_environment(phase),
+                env=self._clean_environment(capability_phase),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

@@ -5,7 +5,6 @@ import fcntl
 import hashlib
 import json
 import os
-import shutil
 import signal
 import subprocess
 import time
@@ -69,7 +68,8 @@ FULL_SWEEP_SCHEMA = {
         "sweep_id", "observed_at", "data_watermark", "latest_sync_watermark",
         "latest_deploy_watermark", "active_workspaces", "verified_workspaces",
         "mismatches", "errors", "unknowns", "stale", "unresolved_surfaces",
-        "onboarding_gate_verified", "workspace_roster", "domains", "scope",
+        "onboarding_gate_verified", "authoritative_roster", "workspace_roster", "domains",
+        "scope",
     ],
     "properties": {
         "sweep_id": {"type": "string"},
@@ -85,6 +85,17 @@ FULL_SWEEP_SCHEMA = {
         "stale": {"type": "integer"},
         "unresolved_surfaces": {"type": "integer"},
         "onboarding_gate_verified": {"type": "boolean"},
+        "authoritative_roster": {
+            "type": "object",
+            "required": ["kind", "id", "source", "observed_at", "workspace_ids"],
+            "properties": {
+                "kind": {"enum": ["authoritative_workspace_roster"]},
+                "id": {"type": "string"},
+                "source": {"enum": ["finsider-verification:list_workspaces"]},
+                "observed_at": {"type": "string"},
+                "workspace_ids": {"type": "array", "items": {"type": "string"}},
+            },
+        },
         "workspace_roster": {
             "type": "array",
             "items": {
@@ -306,10 +317,35 @@ class Supervisor:
         os.makedirs(self.runtime_dir, exist_ok=True)
         os.makedirs(self.trace_dir, exist_ok=True)
         os.makedirs(os.path.join(self.runtime_dir, "worktrees"), exist_ok=True)
-        if not os.path.exists(self.contract_path):
-            shutil.copyfile(os.path.join(self.source_dir, "contract.md"), self.contract_path)
+        source_contract_path = os.path.join(self.source_dir, "contract.md")
+        with open(source_contract_path, "rb") as contract_file:
+            contract_content = contract_file.read()
+        contract_hash = hashlib.sha256(contract_content).hexdigest()
+        current_contract = None
+        if os.path.exists(self.contract_path):
+            with open(self.contract_path, "rb") as contract_file:
+                current_contract = contract_file.read()
+        if current_contract != contract_content:
+            temporary_contract = self.contract_path + ".tmp"
+            with open(temporary_contract, "wb") as contract_file:
+                contract_file.write(contract_content)
+                contract_file.flush()
+                os.fsync(contract_file.fileno())
+            os.replace(temporary_contract, self.contract_path)
         if not os.path.exists(self.state_path):
-            save_state(self.state_path, new_state())
+            state = new_state()
+            state["contract_sha256"] = contract_hash
+            save_state(self.state_path, state)
+        else:
+            state = load_state(self.state_path)
+            if state.get("contract_sha256") != contract_hash:
+                state["contract_sha256"] = contract_hash
+                state["clean_sweeps"] = []
+                state["status"] = "running"
+                state["last_sweep_errors"] = [
+                    "accuracy contract changed; proof sequence restarted"
+                ]
+                save_state(self.state_path, state)
         if not os.path.exists(self.ledger_path):
             with open(self.ledger_path, "w") as ledger:
                 ledger.write("# Finsider Continuous Accuracy Loop Ledger\n\n")
@@ -542,7 +578,11 @@ class Supervisor:
             }
             save_state(self.state_path, state)
         result = self.runner.run(
-            phase, self._render_prompt(phase, state), BUILD_SCHEMA, self._phase_cwd(state)
+            phase,
+            self._render_prompt(phase, state),
+            BUILD_SCHEMA,
+            self._phase_cwd(state),
+            capability_phase=("rework" if rework else state["active_contract"]["action"]),
         )
         state["build_result"] = result
         state["action_intent"]["receipts"] = copy.deepcopy(result.get("receipts", []))

@@ -61,6 +61,30 @@ class RuntimeArtifactTests(unittest.TestCase):
             self.assertIn("legacy accuracy process is still active", result.stderr)
             self.assertFalse(os.path.exists(environment["FINSIDER_LAUNCH_AGENTS_DIR"]))
 
+    def test_activation_refuses_noncanonical_source_before_launchd_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fake_pgrep = os.path.join(directory, "pgrep")
+            with open(fake_pgrep, "w") as executable:
+                executable.write("#!/bin/sh\nexit 1\n")
+            os.chmod(fake_pgrep, os.stat(fake_pgrep).st_mode | stat.S_IXUSR)
+            environment = dict(os.environ)
+            environment["PATH"] = directory + os.pathsep + environment["PATH"]
+            environment["FINSIDER_ACCURACY_RUNTIME"] = os.path.join(directory, "runtime")
+            environment["FINSIDER_LAUNCH_AGENTS_DIR"] = os.path.join(directory, "agents")
+            environment["FINSIDER_LOG_DIR"] = os.path.join(directory, "logs")
+
+            result = subprocess.run(
+                [INSTALLER, "--activate"],
+                text=True,
+                capture_output=True,
+                cwd=ROOT,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
+            self.assertIn("activation must run from canonical source", result.stderr)
+            self.assertFalse(os.path.exists(environment["FINSIDER_LAUNCH_AGENTS_DIR"]))
+
 
 if __name__ == "__main__":
     unittest.main()

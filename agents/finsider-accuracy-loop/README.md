@@ -11,7 +11,7 @@ This is not a cron job. The next phase starts as soon as the prior phase ends. T
 - Verification triggers and dry runs are allowed only when they cannot change customer books.
 - Customer-number-changing work is held as `NEEDS CPA REVIEW`.
 - Each Claude role has a fresh context. Spec and judge cannot edit files. No role can spawn nested agents.
-- Claude runs without permission bypass, with a deny-by-default phase tool policy, an all-tool safety hook, and production/deployment credentials removed from child environments.
+- Claude runs without permission bypass or general shell access, with a deny-by-default phase tool policy, a strict MCP list, an all-tool safety hook, and production/deployment credentials removed from child environments. A narrow local service handles approved tests and safe Git/PR delivery.
 - The supervisor, not Claude, decides completion.
 
 ## Completion gate
@@ -34,7 +34,7 @@ Tickets, explanations, owners, stale connections, unsupported providers, open PR
 ./agents/finsider-accuracy-loop/install.sh --activate
 ```
 
-Activation refuses while the legacy fix or tie-out process is active. It validates the full harness before unloading anything, initializes the three-file state, installs the persistent plist, and starts the supervisor. A failed launchd handoff restores the prior plist.
+Activation refuses while the legacy fix or tie-out process is active. It validates the full harness before unloading anything, gracefully stops an older supervisor, atomically refreshes the versioned contract, installs the persistent plist, and starts the supervisor. A failed launchd handoff restores the prior plist. A contract change invalidates any prior clean-sweep sequence.
 
 ## Runtime state
 

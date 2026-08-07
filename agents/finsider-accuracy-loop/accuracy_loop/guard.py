@@ -42,7 +42,7 @@ UNIVERSAL_DENY_PATTERNS = (
 )
 
 READ_BUILTIN_TOOLS = {
-    "Read", "Glob", "Grep", "Bash", "WebFetch", "WebSearch",
+    "Read", "Glob", "Grep", "WebFetch", "WebSearch", "StructuredOutput",
 }
 BUILD_BUILTIN_TOOLS = READ_BUILTIN_TOOLS | {"Edit", "Write", "NotebookEdit"}
 VERIFICATION_READ_TOOLS = {
@@ -57,6 +57,15 @@ VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS | {
     "mcp__finsider-verification__trigger_verification_run",
     "mcp__finsider-verification__scan_discrepancies",
     "mcp__finsider-verification__reconcile_deletions",
+}
+SAFE_READ_TOOLS = {
+    "mcp__finsider-accuracy-tools__inspect_repo",
+    "mcp__finsider-accuracy-tools__run_test",
+}
+SAFE_DELIVERY_TOOLS = SAFE_READ_TOOLS | {
+    "mcp__finsider-accuracy-tools__commit_changes",
+    "mcp__finsider-accuracy-tools__push_branch",
+    "mcp__finsider-accuracy-tools__create_or_view_pr",
 }
 
 
@@ -79,17 +88,32 @@ def blocked_reason(phase, command):
 
 
 def tool_blocked_reason(phase, tool_name, tool_input):
-    builtins = BUILD_BUILTIN_TOOLS if phase in ("build", "rework") else READ_BUILTIN_TOOLS
     if tool_name == "Bash":
-        return blocked_reason(phase, tool_input.get("command", ""))
+        return "general shell execution is disabled; use finsider-accuracy-tools"
+    builtins = BUILD_BUILTIN_TOOLS if phase in ("code", "rework") else READ_BUILTIN_TOOLS
     if tool_name in builtins:
         return None
     if not tool_name.startswith("mcp__"):
         return "tool is outside the phase allowlist"
     if phase in ("spec", "judge"):
+        if tool_name in SAFE_READ_TOOLS:
+            return None
         if tool_name in VERIFICATION_READ_TOOLS:
             return None
         return "%s phase permits only read-only verification MCP tools" % phase
+    if phase == "proof":
+        if tool_name in SAFE_READ_TOOLS or tool_name in VERIFICATION_BUILD_TOOLS:
+            if (
+                tool_name == "mcp__finsider-verification__reconcile_deletions"
+                and tool_input.get("apply") is not False
+            ):
+                return "deletion reconciliation must explicitly use apply=false"
+            return None
+        return "proof phase permits only safe verification and inspection tools"
+    if phase in ("code", "rework") and tool_name in SAFE_DELIVERY_TOOLS:
+        return None
+    if phase == "operations" and tool_name in VERIFICATION_READ_TOOLS:
+        return None
     if tool_name in VERIFICATION_BUILD_TOOLS:
         if (
             tool_name == "mcp__finsider-verification__reconcile_deletions"
@@ -98,7 +122,7 @@ def tool_blocked_reason(phase, tool_name, tool_input):
             return "deletion reconciliation must explicitly use apply=false"
         return None
     lowered = tool_name.lower()
-    if lowered.startswith("mcp__atlassian__"):
+    if phase == "operations" and lowered.startswith("mcp__atlassian__"):
         if any(token in lowered for token in ("delete", "remove", "archive", "admin")):
             return "destructive Atlassian action is not allowed"
         if any(token in lowered for token in (

@@ -35,6 +35,7 @@ preflight() {
     "$SOURCE_DIR/accuracy_loop/model.py" \
     "$SOURCE_DIR/accuracy_loop/claude.py" \
     "$SOURCE_DIR/accuracy_loop/guard.py" \
+    "$SOURCE_DIR/accuracy_loop/safe_tools.py" \
     "$SOURCE_DIR/accuracy_loop/workspace.py" \
     "$SOURCE_DIR/accuracy_loop/supervisor.py"
 }
@@ -60,10 +61,6 @@ activate() {
     echo "legacy accuracy process is still active; wait for its current iteration to finish" >&2
     return 3
   fi
-  if supervisor_process_running; then
-    echo "continuous Finsider accuracy supervisor is already active"
-    return 0
-  fi
   if [[ "$SOURCE_DIR" != "$CANONICAL_SOURCE" ]]; then
     echo "activation must run from canonical source: $CANONICAL_SOURCE" >&2
     return 4
@@ -75,6 +72,21 @@ activate() {
   if [[ -f "$PLIST_TARGET" ]]; then
     cp "$PLIST_TARGET" "$backup_dir/previous.plist"
     had_previous=1
+  fi
+
+  if supervisor_process_running; then
+    launchctl kill SIGTERM "$DOMAIN/com.finsider.accuracy-loop" >/dev/null 2>&1 || true
+    for _ in {1..30}; do
+      if ! supervisor_process_running; then
+        break
+      fi
+      sleep 1
+    done
+    if supervisor_process_running; then
+      echo "running supervisor did not stop cleanly; activation aborted" >&2
+      rm -rf "$backup_dir"
+      return 6
+    fi
   fi
 
   launchctl bootout "$DOMAIN/com.finsider.accuracy-loop" >/dev/null 2>&1 || true
@@ -98,6 +110,24 @@ activate() {
     fi
     rm -rf "$backup_dir"
     return 5
+  fi
+  for _ in {1..15}; do
+    if supervisor_process_running; then
+      break
+    fi
+    sleep 1
+  done
+  if ! supervisor_process_running; then
+    echo "supervisor was loaded but no running PID was observed" >&2
+    launchctl bootout "$DOMAIN/com.finsider.accuracy-loop" >/dev/null 2>&1 || true
+    if [[ "$had_previous" -eq 1 ]]; then
+      cp "$backup_dir/previous.plist" "$PLIST_TARGET"
+      launchctl bootstrap "$DOMAIN" "$PLIST_TARGET" >/dev/null 2>&1 || true
+    else
+      rm -f "$PLIST_TARGET"
+    fi
+    rm -rf "$backup_dir"
+    return 7
   fi
   rm -rf "$backup_dir"
   echo "continuous Finsider accuracy supervisor activated"

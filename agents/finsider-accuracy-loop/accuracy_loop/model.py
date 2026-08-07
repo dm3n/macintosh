@@ -1,12 +1,13 @@
 """Durable state and deterministic proof-completion rules."""
 
 import copy
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PHASES = ("spec", "build", "judge", "rework")
 
 REQUIRED_DOMAINS = (
@@ -84,6 +85,7 @@ def new_state():
         },
         "blockers": [],
         "clean_sweeps": [],
+        "contract_sha256": None,
         "last_error": None,
         "created_at": utc_now(),
         "updated_at": utc_now(),
@@ -93,9 +95,42 @@ def new_state():
 def load_state(path):
     with open(path) as state_file:
         state = json.load(state_file)
+    if state.get("schema_version") == 1:
+        state = _migrate_v1_state(state)
     if state.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("unsupported state schema version")
     return state
+
+
+def _migrate_v1_state(state):
+    migrated = copy.deepcopy(state)
+    blockers = []
+    for blocker in migrated.get("blockers", []):
+        if not isinstance(blocker, dict):
+            blocker = {"summary": str(blocker)}
+        identity = blocker.get("id") or blocker.get("contract_id")
+        if not identity:
+            digest = hashlib.sha256(
+                json.dumps(blocker, sort_keys=True, default=str).encode("utf-8")
+            ).hexdigest()[:12]
+            identity = "legacy:%s" % digest
+        evidence_needed = blocker.get("evidence_needed")
+        if not _valid_nonempty_strings(evidence_needed):
+            evidence_needed = blocker.get("findings")
+        if not _valid_nonempty_strings(evidence_needed):
+            evidence_needed = ["Fresh direct evidence that resolves this blocker."]
+        blocker.update({
+            "id": identity,
+            "summary": blocker.get("summary") or blocker.get("title") or identity,
+            "owner": blocker.get("owner") or "Finsider accuracy loop",
+            "evidence_needed": evidence_needed,
+        })
+        blockers.append(blocker)
+    migrated["blockers"] = blockers
+    migrated.setdefault("action_intent", None)
+    migrated.setdefault("contract_sha256", None)
+    migrated["schema_version"] = SCHEMA_VERSION
+    return migrated
 
 
 def save_state(path, state):
@@ -146,7 +181,14 @@ def _valid_nonempty_strings(value):
     )
 
 
-def _validate_evidence(evidence, field, errors):
+def _validate_evidence(
+    evidence,
+    field,
+    errors,
+    active_by_id=None,
+    deploy_watermark=None,
+    sweep_observed=None,
+):
     if not isinstance(evidence, list) or not evidence:
         errors.append("%s has no structured evidence" % field)
         return set()
@@ -169,10 +211,44 @@ def _validate_evidence(evidence, field, errors):
                 errors.append("%s.%s must be non-empty strings" % (item_field, key))
         if _valid_nonempty_strings(item.get("workspace_ids")):
             covered_workspaces.update(item["workspace_ids"])
+        timestamp_errors = []
+        evidence_time = _parse_timestamp(
+            item.get("observed_at"), "%s.observed_at" % item_field, timestamp_errors
+        )
+        if evidence_time:
+            if sweep_observed and evidence_time > sweep_observed:
+                errors.append("%s was observed after the sweep" % item_field)
+            if evidence_time > datetime.now(timezone.utc):
+                errors.append("%s has a future observation" % item_field)
+            if deploy_watermark and evidence_time < deploy_watermark:
+                errors.append("%s predates the latest deploy" % item_field)
+            for workspace_id in item.get("workspace_ids", []):
+                workspace = (active_by_id or {}).get(workspace_id)
+                if workspace is None:
+                    errors.append("%s references a non-active workspace %s" % (
+                        item_field, workspace_id
+                    ))
+                    continue
+                sync_at = _parse_timestamp(workspace.get("latest_sync_at"), "latest_sync_at", [])
+                if sync_at and evidence_time < sync_at:
+                    errors.append("%s predates workspace %s latest sync" % (
+                        item_field, workspace_id
+                    ))
+        if set(item.get("periods", [])) != {"all_supported_history"}:
+            errors.append("%s period scope is not canonical" % item_field)
+        layers = item.get("layers", [])
+        if not layers or not set(layers).issubset(set(REQUIRED_LAYERS)):
+            errors.append("%s layer scope is not canonical" % item_field)
+        dimensions = item.get("dimensions", [])
+        if not dimensions or not set(dimensions).issubset(set(REQUIRED_DIMENSIONS)):
+            errors.append("%s dimension scope is not canonical" % item_field)
+        surfaces = item.get("surfaces", [])
+        if not surfaces or not set(surfaces).issubset(set(REQUIRED_SURFACES)):
+            errors.append("%s surface scope is not canonical" % item_field)
     return covered_workspaces
 
 
-def _validate_workspace_roster(sweep, deploy_watermark, errors):
+def _validate_workspace_roster(sweep, deploy_watermark, sweep_observed, errors):
     roster = sweep.get("workspace_roster")
     if not isinstance(roster, list) or not roster:
         errors.append("workspace_roster is missing")
@@ -222,6 +298,10 @@ def _validate_workspace_roster(sweep, deploy_watermark, errors):
                 errors.append("workspace %s was verified before its latest sync" % workspace_id)
             if verified_at and deploy_watermark and verified_at < deploy_watermark:
                 errors.append("workspace %s was verified before the latest deploy" % workspace_id)
+            if verified_at and sweep_observed and verified_at > sweep_observed:
+                errors.append("workspace %s was verified after the sweep" % workspace_id)
+            if verified_at and verified_at > datetime.now(timezone.utc):
+                errors.append("workspace %s verification is in the future" % workspace_id)
         else:
             if included is not False:
                 errors.append("inactive workspace %s cannot be included" % workspace_id)
@@ -229,10 +309,32 @@ def _validate_workspace_roster(sweep, deploy_watermark, errors):
                 "exclusion_reason"
             ].strip():
                 errors.append("inactive workspace %s has no exclusion reason" % workspace_id)
+    authoritative = sweep.get("authoritative_roster")
+    if not isinstance(authoritative, dict):
+        errors.append("authoritative_roster is missing")
+    else:
+        if authoritative.get("kind") != "authoritative_workspace_roster":
+            errors.append("authoritative_roster.kind is invalid")
+        if authoritative.get("source") != "finsider-verification:list_workspaces":
+            errors.append("authoritative_roster.source is invalid")
+        if not isinstance(authoritative.get("id"), str) or not authoritative["id"].strip():
+            errors.append("authoritative_roster.id is missing")
+        roster_observed = _parse_timestamp(
+            authoritative.get("observed_at"), "authoritative_roster.observed_at", errors
+        )
+        if roster_observed and sweep_observed and roster_observed > sweep_observed:
+            errors.append("authoritative roster was observed after the sweep")
+        if roster_observed and roster_observed > datetime.now(timezone.utc):
+            errors.append("authoritative roster observation is in the future")
+        roster_ids = authoritative.get("workspace_ids")
+        if not isinstance(roster_ids, list) or set(roster_ids) != seen or len(roster_ids) != len(seen):
+            errors.append("workspace_roster does not match the authoritative roster")
     return active_ids, active_by_id
 
 
-def _validate_scope(scope, active_ids, errors):
+def _validate_scope(
+    scope, active_ids, active_by_id, deploy_watermark, sweep_observed, errors
+):
     if not isinstance(scope, dict):
         errors.append("scope is missing")
         return
@@ -240,7 +342,10 @@ def _validate_scope(scope, active_ids, errors):
     periods = scope.get("periods", {})
     if periods.get("coverage") != "all_supported_history":
         errors.append("period scope is not all_supported_history")
-    if _validate_evidence(periods.get("evidence"), "scope.periods.evidence", errors) != active_ids:
+    if _validate_evidence(
+        periods.get("evidence"), "scope.periods.evidence", errors,
+        active_by_id, deploy_watermark, sweep_observed,
+    ) != active_ids:
         errors.append("period evidence does not cover every active workspace")
 
     for key, required in (("layers", REQUIRED_LAYERS), ("dimensions", REQUIRED_DIMENSIONS)):
@@ -250,8 +355,19 @@ def _validate_scope(scope, active_ids, errors):
         covered = section.get("covered")
         if not isinstance(covered, list) or set(covered) != set(required):
             errors.append("%s coverage is incomplete" % key)
-        if _validate_evidence(section.get("evidence"), "scope.%s.evidence" % key, errors) != active_ids:
+        evidence = section.get("evidence")
+        if _validate_evidence(
+            evidence, "scope.%s.evidence" % key, errors,
+            active_by_id, deploy_watermark, sweep_observed,
+        ) != active_ids:
             errors.append("%s evidence does not cover every active workspace" % key)
+        if isinstance(evidence, list):
+            covered_scope = set()
+            for item in evidence:
+                if isinstance(item, dict):
+                    covered_scope.update(item.get(key, []))
+            if covered_scope != set(required):
+                errors.append("%s structured evidence scope is incomplete" % key)
 
     surfaces = scope.get("surfaces")
     if not isinstance(surfaces, dict) or set(surfaces) != set(REQUIRED_SURFACES):
@@ -262,10 +378,16 @@ def _validate_scope(scope, active_ids, errors):
         if proof.get("status") != "proved":
             errors.append("surface %s is not proved" % surface)
         covered = _validate_evidence(
-            proof.get("evidence"), "scope.surfaces.%s.evidence" % surface, errors
+            proof.get("evidence"), "scope.surfaces.%s.evidence" % surface, errors,
+            active_by_id, deploy_watermark, sweep_observed,
         )
         if covered != active_ids:
             errors.append("surface %s does not cover every active workspace" % surface)
+        if isinstance(proof.get("evidence"), list) and not all(
+            surface in item.get("surfaces", [])
+            for item in proof["evidence"] if isinstance(item, dict)
+        ):
+            errors.append("surface %s evidence does not name the surface" % surface)
 
 
 def validate_sweep(sweep):
@@ -299,7 +421,9 @@ def validate_sweep(sweep):
     deploy_watermark = _parse_timestamp(
         sweep.get("latest_deploy_watermark"), "latest_deploy_watermark", errors
     )
-    active_ids, _active_by_id = _validate_workspace_roster(sweep, deploy_watermark, errors)
+    active_ids, active_by_id = _validate_workspace_roster(
+        sweep, deploy_watermark, observed_at, errors
+    )
     if type(active) is int and len(active_ids) != active:
         errors.append("active_workspaces does not match the workspace roster")
     if type(verified) is int and len(active_ids) != verified:
@@ -314,19 +438,47 @@ def validate_sweep(sweep):
             if proof.get("status") != "proved":
                 errors.append("domain %s is not proved" % domain)
             covered = _validate_evidence(
-                proof.get("evidence"), "domains.%s.evidence" % domain, errors
+                proof.get("evidence"), "domains.%s.evidence" % domain, errors,
+                active_by_id, deploy_watermark, observed_at,
             )
             if covered != active_ids:
                 errors.append("domain %s does not cover every active workspace" % domain)
 
-    _validate_scope(sweep.get("scope"), active_ids, errors)
+    _validate_scope(
+        sweep.get("scope"), active_ids, active_by_id, deploy_watermark, observed_at, errors
+    )
     freshness_inputs = [item for item in (data_watermark, sync_watermark, deploy_watermark) if item]
     if observed_at and freshness_inputs and observed_at < max(freshness_inputs):
         errors.append("observed_at is older than a required watermark")
+    if observed_at and observed_at > datetime.now(timezone.utc):
+        errors.append("observed_at cannot be in the future")
     if data_watermark and sync_watermark and data_watermark < sync_watermark:
         errors.append("data_watermark is older than the latest sync watermark")
 
     return errors
+
+
+def _evidence_identities(sweep):
+    identities = set()
+    evidence_lists = []
+    for proof in sweep.get("domains", {}).values():
+        if isinstance(proof, dict):
+            evidence_lists.append(proof.get("evidence", []))
+    scope = sweep.get("scope", {})
+    for key in ("periods", "layers", "dimensions"):
+        section = scope.get(key, {})
+        if isinstance(section, dict):
+            evidence_lists.append(section.get("evidence", []))
+    for proof in scope.get("surfaces", {}).values():
+        if isinstance(proof, dict):
+            evidence_lists.append(proof.get("evidence", []))
+    for evidence in evidence_lists:
+        if not isinstance(evidence, list):
+            continue
+        for item in evidence:
+            if isinstance(item, dict):
+                identities.add((item.get("kind"), item.get("source"), item.get("id")))
+    return identities
 
 
 def record_accepted_sweep(state, sweep):
@@ -374,6 +526,22 @@ def record_accepted_sweep(state, sweep):
             state["clean_sweeps"] = [copy.deepcopy(sweep)]
             state["last_sweep_errors"] = ["workspace roster changed; proof sequence restarted"]
             return False
+        previous_roster_evidence = previous["authoritative_roster"]
+        current_roster_evidence = sweep["authoritative_roster"]
+        if current_roster_evidence["id"] == previous_roster_evidence["id"]:
+            state["clean_sweeps"] = []
+            state["last_sweep_errors"] = ["authoritative roster snapshot was replayed"]
+            return False
+        old_roster_observed = _parse_timestamp(
+            previous_roster_evidence.get("observed_at"), "authoritative_roster.observed_at", []
+        )
+        new_roster_observed = _parse_timestamp(
+            current_roster_evidence.get("observed_at"), "authoritative_roster.observed_at", []
+        )
+        if old_roster_observed and new_roster_observed and new_roster_observed <= old_roster_observed:
+            state["clean_sweeps"] = []
+            state["last_sweep_errors"] = ["authoritative roster observation did not advance"]
+            return False
         previous_active = {
             item["workspace_id"]: item
             for item in previous["workspace_roster"] if item["lifecycle"] == "active"
@@ -382,6 +550,11 @@ def record_accepted_sweep(state, sweep):
             item["workspace_id"]: item
             for item in sweep["workspace_roster"] if item["lifecycle"] == "active"
         }
+        reused_evidence = _evidence_identities(previous) & _evidence_identities(sweep)
+        if reused_evidence:
+            state["clean_sweeps"] = []
+            state["last_sweep_errors"] = ["proof evidence was replayed between clean sweeps"]
+            return False
         for workspace_id, current in current_active.items():
             old = previous_active[workspace_id]
             if current["verification_id"] == old["verification_id"]:

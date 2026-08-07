@@ -111,10 +111,12 @@ class ScriptedRunner:
         self.results = list(results)
         self.phases = []
         self.prompts = []
+        self.capability_phases = []
         self.active_process = None
 
-    def run(self, phase, prompt, schema, cwd):
+    def run(self, phase, prompt, schema, cwd, capability_phase=None):
         self.phases.append(phase)
+        self.capability_phases.append(capability_phase)
         self.prompts.append(prompt)
         result = self.results.pop(0)
         if isinstance(result, Exception):
@@ -177,6 +179,25 @@ class SupervisorTests(unittest.TestCase):
         )
         self.assertEqual(files, ["CONTRACT.md", "LEDGER.md", "STATE.json"])
 
+    def test_contract_update_is_atomic_and_restarts_proof_sequence(self):
+        supervisor, _ = self.supervisor([])
+        supervisor.ensure_runtime()
+        state = load_state(supervisor.state_path)
+        state["clean_sweeps"] = [{"sweep_id": "old"}]
+        state["status"] = "complete"
+        save_state(supervisor.state_path, state)
+        with open(os.path.join(self.source, "contract.md"), "w") as contract_file:
+            contract_file.write("# Contract v2\n")
+
+        supervisor.ensure_runtime()
+
+        state = load_state(supervisor.state_path)
+        with open(supervisor.contract_path) as contract_file:
+            self.assertEqual(contract_file.read(), "# Contract v2\n")
+        self.assertEqual(state["status"], "running")
+        self.assertEqual(state["clean_sweeps"], [])
+        self.assertFalse(os.path.exists(supervisor.contract_path + ".tmp"))
+
     def test_accepted_work_starts_next_spec_without_schedule_sleep(self):
         supervisor, runner = self.supervisor(
             [spec_result("proof"), build_result(), judge_result("ACCEPT"), spec_result("proof")]
@@ -197,6 +218,7 @@ class SupervisorTests(unittest.TestCase):
         supervisor.step()
 
         self.assertEqual(runner.phases, ["spec", "build"])
+        self.assertEqual(runner.capability_phases, [None, "code"])
         self.assertEqual(load_state(supervisor.state_path)["worktree"]["path"],
                          self.fake_worktree_path)
 
