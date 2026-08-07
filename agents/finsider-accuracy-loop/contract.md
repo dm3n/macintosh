@@ -71,13 +71,13 @@ Required transaction layers are exactly `original`, `adjusted`, and `bridge`. Re
 - Never merge or deploy.
 - Never write, repair, delete, or resolve production financial records or verification discrepancies.
 - Never move money, issue cards, or perform destructive provider actions.
-- A verification-run trigger or dry-run recalculation is allowed only when it cannot change customer books.
+- A verification-run trigger or dry-run recalculation is allowed only when it cannot change customer books or persist discrepancy-review rows. The production `scan_discrepancies` tool is not allowed.
 - A customer-number-changing PR is labelled `NEEDS CPA REVIEW` and held for review.
 - Every code fix begins with a reproducing test, runs targeted verification, and preserves tenant and workspace scoping.
 - Every user-facing communication follows the Finsider Plain English block, names client companies with workspace IDs, and contains no AI attribution.
 - Check for an existing branch, PR, ticket, comment, or verification job carrying the work unit's idempotency key before creating one.
 - The supervisor derives the idempotency key from the accepted contract and persists the action intent before execution. External jobs and artifacts return durable receipts for crash-resume polling.
-- Child roles have no general shell. They run with phase-specific built-in and MCP allowlists, an all-tool pre-use safety hook, a strict MCP server list, and deployment/production credentials removed from their environment. Tests and delivery use a narrow local service that validates arguments and can only test, inspect, commit, push the current `agent/accuracy-*` branch, and create or reuse an unmerged PR.
+- Child roles have no general shell. They run with phase-specific built-in and MCP allowlists, an all-tool pre-use safety hook, a strict MCP server list, and deployment/production credentials removed from their environment. Tests and delivery use a narrow local service that validates arguments. Tests run from a sanitized copy under a macOS sandbox with network, host-profile reads, and writes outside the copy denied. Delivery is restricted to persisted accuracy worktrees, rejects workflow/deployment/infra paths, and can only inspect, commit, push the current `agent/accuracy-*` branch, and create or reuse an unmerged PR.
 - Preserve unrelated dirty files and existing worktrees.
 
 ## Writable repositories
@@ -122,7 +122,7 @@ A completion candidate must contain:
 - `stale`
 - `unresolved_surfaces`
 - `onboarding_gate_verified`
-- `authoritative_roster`, identified by a fresh immutable source snapshot from `finsider-verification:list_workspaces`
+- `authoritative_roster`, identified by a fresh source snapshot from `finsider-verification:list_workspaces`; its SHA-256 checksum binds the canonical roster content and its ID binds that checksum to the observation timestamp
 - `workspace_roster`, with a unique ID, name, lifecycle, and inclusion decision for every workspace in that authoritative snapshot; active entries also carry `latest_sync_at`, `verification_id`, and `verified_at`
 - `domains`, keyed by all 20 required domain keys, with `{ "status": "proved", "evidence": [ ... ] }`
 - `scope.periods`, proving `all_supported_history`

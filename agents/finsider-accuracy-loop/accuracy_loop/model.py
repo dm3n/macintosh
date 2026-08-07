@@ -248,7 +248,28 @@ def _validate_evidence(
     return covered_workspaces
 
 
-def _validate_workspace_roster(sweep, deploy_watermark, sweep_observed, errors):
+def _workspace_roster_checksum(roster):
+    canonical = []
+    for workspace in roster:
+        if not isinstance(workspace, dict):
+            continue
+        canonical.append({
+            key: workspace.get(key)
+            for key in (
+                "workspace_id", "name", "lifecycle", "included", "latest_sync_at",
+                "exclusion_reason",
+            )
+            if key in workspace
+        })
+    canonical.sort(key=lambda item: str(item.get("workspace_id")))
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_workspace_roster(
+    sweep, required_watermark, sweep_observed, errors
+):
     roster = sweep.get("workspace_roster")
     if not isinstance(roster, list) or not roster:
         errors.append("workspace_roster is missing")
@@ -296,8 +317,8 @@ def _validate_workspace_roster(sweep, deploy_watermark, sweep_observed, errors):
                 errors.append("%s.verification_id is missing" % field)
             if verified_at and sync_at and verified_at < sync_at:
                 errors.append("workspace %s was verified before its latest sync" % workspace_id)
-            if verified_at and deploy_watermark and verified_at < deploy_watermark:
-                errors.append("workspace %s was verified before the latest deploy" % workspace_id)
+            if verified_at and required_watermark and verified_at < required_watermark:
+                errors.append("workspace %s was verified before a required watermark" % workspace_id)
             if verified_at and sweep_observed and verified_at > sweep_observed:
                 errors.append("workspace %s was verified after the sweep" % workspace_id)
             if verified_at and verified_at > datetime.now(timezone.utc):
@@ -326,6 +347,14 @@ def _validate_workspace_roster(sweep, deploy_watermark, sweep_observed, errors):
             errors.append("authoritative roster was observed after the sweep")
         if roster_observed and roster_observed > datetime.now(timezone.utc):
             errors.append("authoritative roster observation is in the future")
+        if roster_observed and required_watermark and roster_observed < required_watermark:
+            errors.append("authoritative roster predates a required watermark")
+        checksum = _workspace_roster_checksum(roster)
+        if authoritative.get("checksum") != checksum:
+            errors.append("authoritative roster checksum does not match the roster")
+        expected_id = "roster:%s:%s" % (checksum, authoritative.get("observed_at"))
+        if authoritative.get("id") != expected_id:
+            errors.append("authoritative roster ID is not bound to its snapshot")
         roster_ids = authoritative.get("workspace_ids")
         if not isinstance(roster_ids, list) or set(roster_ids) != seen or len(roster_ids) != len(seen):
             errors.append("workspace_roster does not match the authoritative roster")
@@ -421,8 +450,12 @@ def validate_sweep(sweep):
     deploy_watermark = _parse_timestamp(
         sweep.get("latest_deploy_watermark"), "latest_deploy_watermark", errors
     )
+    required_watermarks = [
+        item for item in (data_watermark, sync_watermark, deploy_watermark) if item
+    ]
+    required_watermark = max(required_watermarks) if required_watermarks else None
     active_ids, active_by_id = _validate_workspace_roster(
-        sweep, deploy_watermark, observed_at, errors
+        sweep, required_watermark, observed_at, errors
     )
     if type(active) is int and len(active_ids) != active:
         errors.append("active_workspaces does not match the workspace roster")

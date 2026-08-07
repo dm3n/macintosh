@@ -11,7 +11,7 @@ This is not a cron job. The next phase starts as soon as the prior phase ends. T
 - Verification triggers and dry runs are allowed only when they cannot change customer books.
 - Customer-number-changing work is held as `NEEDS CPA REVIEW`.
 - Each Claude role has a fresh context. Spec and judge cannot edit files. No role can spawn nested agents.
-- Claude runs without permission bypass or general shell access, with a deny-by-default phase tool policy, a strict MCP list, an all-tool safety hook, and production/deployment credentials removed from child environments. A narrow local service handles approved tests and safe Git/PR delivery.
+- Claude runs without permission bypass or general shell access, with a deny-by-default phase tool policy, a strict MCP list, an all-tool safety hook, and production/deployment credentials removed from child environments. A narrow local service handles approved tests and safe Git/PR delivery. Tests run in a sanitized, network-denied macOS sandbox; automated delivery rejects CI workflow, deployment, and infrastructure paths.
 - The supervisor, not Claude, decides completion.
 
 ## Completion gate

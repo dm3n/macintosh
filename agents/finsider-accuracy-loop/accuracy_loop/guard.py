@@ -7,6 +7,16 @@ import re
 import sys
 
 
+DELIVERY_ROOT = "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees"
+FORBIDDEN_EDIT_PATHS = (
+    re.compile(r"^\.github/(?:workflows|actions)/"),
+    re.compile(r"^\.circleci/"),
+    re.compile(r"^(?:azure-pipelines|vercel|netlify)\.(?:yml|yaml|json|toml)$"),
+    re.compile(r"^(?:Dockerfile|docker-compose(?:\.[^.]+)?\.ya?ml)$"),
+    re.compile(r"^(?:infra|infrastructure|terraform|kubernetes|k8s|deploy)/"),
+    re.compile(r"^scripts/.*(?:deploy|release|publish)"),
+)
+
 READ_ONLY_PATTERNS = (
     r"\bgit(?:\s+-C\s+\S+)?\s+(?:add|commit|push|merge|rebase|reset|clean|checkout|switch)\b",
     r"\bgit\s+worktree\s+(?:add|remove|move|prune)\b",
@@ -55,12 +65,12 @@ VERIFICATION_READ_TOOLS = {
 }
 VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS | {
     "mcp__finsider-verification__trigger_verification_run",
-    "mcp__finsider-verification__scan_discrepancies",
     "mcp__finsider-verification__reconcile_deletions",
 }
 SAFE_READ_TOOLS = {
     "mcp__finsider-accuracy-tools__inspect_repo",
     "mcp__finsider-accuracy-tools__run_test",
+    "mcp__finsider-accuracy-tools__compute_roster_snapshot",
 }
 SAFE_DELIVERY_TOOLS = SAFE_READ_TOOLS | {
     "mcp__finsider-accuracy-tools__commit_changes",
@@ -91,6 +101,19 @@ def tool_blocked_reason(phase, tool_name, tool_input):
     if tool_name == "Bash":
         return "general shell execution is disabled; use finsider-accuracy-tools"
     builtins = BUILD_BUILTIN_TOOLS if phase in ("code", "rework") else READ_BUILTIN_TOOLS
+    if tool_name in ("Edit", "Write", "NotebookEdit"):
+        path = tool_input.get("file_path") or tool_input.get("notebook_path")
+        if not isinstance(path, str) or not path:
+            return "edit tool did not provide a file path"
+        resolved = os.path.realpath(path if os.path.isabs(path) else os.path.join(os.getcwd(), path))
+        delivery_root = os.path.realpath(DELIVERY_ROOT)
+        if not resolved.startswith(delivery_root + os.sep):
+            return "edits are restricted to persisted accuracy worktrees"
+        relative = os.path.relpath(resolved, delivery_root).replace(os.sep, "/")
+        parts = relative.split("/", 1)
+        worktree_relative = parts[1] if len(parts) == 2 else ""
+        if any(pattern.search(worktree_relative) for pattern in FORBIDDEN_EDIT_PATHS):
+            return "workflow, deployment, and infrastructure paths are read-only"
     if tool_name in builtins:
         return None
     if not tool_name.startswith("mcp__"):

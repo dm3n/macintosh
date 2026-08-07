@@ -13,6 +13,7 @@ from accuracy_loop.model import (  # noqa: E402
     REQUIRED_DOMAINS,
     REQUIRED_LAYERS,
     REQUIRED_SURFACES,
+    _workspace_roster_checksum,
     advance_phase,
     load_state,
     new_state,
@@ -36,10 +37,20 @@ def evidence(evidence_id, observed_at="2026-08-06T22:00:00Z"):
     }
 
 
+def refresh_roster_snapshot(sweep):
+    authoritative = sweep["authoritative_roster"]
+    checksum = _workspace_roster_checksum(sweep["workspace_roster"])
+    authoritative["checksum"] = checksum
+    authoritative["workspace_ids"] = [
+        item["workspace_id"] for item in sweep["workspace_roster"]
+    ]
+    authoritative["id"] = "roster:%s:%s" % (checksum, authoritative["observed_at"])
+
+
 def complete_sweep(sweep_id, observed_at="2026-08-06T22:00:00Z"):
     verification_suffix = sweep_id.rsplit("-", 1)[-1]
     proof = evidence("evidence:%s" % sweep_id, observed_at)
-    return {
+    sweep = {
         "sweep_id": sweep_id,
         "judge_verdict": "ACCEPT",
         "observed_at": observed_at,
@@ -56,10 +67,11 @@ def complete_sweep(sweep_id, observed_at="2026-08-06T22:00:00Z"):
         "onboarding_gate_verified": True,
         "authoritative_roster": {
             "kind": "authoritative_workspace_roster",
-            "id": "roster:%s" % sweep_id,
+            "id": "pending",
             "source": "finsider-verification:list_workspaces",
             "observed_at": observed_at,
             "workspace_ids": ["ws129", "ws130", "ws999"],
+            "checksum": "pending",
         },
         "workspace_roster": [
             {
@@ -113,6 +125,8 @@ def complete_sweep(sweep_id, observed_at="2026-08-06T22:00:00Z"):
             },
         },
     }
+    refresh_roster_snapshot(sweep)
+    return sweep
 
 
 class StateModelTests(unittest.TestCase):
@@ -278,6 +292,20 @@ class StateModelTests(unittest.TestCase):
             "workspace_roster does not match the authoritative roster", validate_sweep(sweep)
         )
 
+    def test_authoritative_roster_is_fresh_and_content_bound(self):
+        stale = complete_sweep("sweep-stale")
+        stale["authoritative_roster"]["observed_at"] = "2026-08-06T20:00:00Z"
+        refresh_roster_snapshot(stale)
+        tampered = complete_sweep("sweep-tampered")
+        tampered["workspace_roster"][0]["name"] = "Changed without a new snapshot"
+
+        self.assertIn(
+            "authoritative roster predates a required watermark", validate_sweep(stale)
+        )
+        self.assertIn(
+            "authoritative roster checksum does not match the roster", validate_sweep(tampered)
+        )
+
     def test_domain_evidence_must_cover_every_active_workspace(self):
         sweep = complete_sweep("sweep-1")
         sweep["domains"][REQUIRED_DOMAINS[0]]["evidence"][0]["workspace_ids"] = ["ws129"]
@@ -331,6 +359,9 @@ class StateModelTests(unittest.TestCase):
         first = complete_sweep("sweep-1")
         second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")
         second["authoritative_roster"]["id"] = first["authoritative_roster"]["id"]
+        second["authoritative_roster"]["observed_at"] = first[
+            "authoritative_roster"
+        ]["observed_at"]
 
         self.assertFalse(record_accepted_sweep(state, first))
         self.assertFalse(record_accepted_sweep(state, second))
@@ -367,6 +398,7 @@ class StateModelTests(unittest.TestCase):
             "exclusion_reason": "Marked test in the authoritative roster.",
         })
         second["authoritative_roster"]["workspace_ids"].append("ws1000")
+        refresh_roster_snapshot(second)
 
         self.assertFalse(record_accepted_sweep(state, first))
         self.assertFalse(record_accepted_sweep(state, second))

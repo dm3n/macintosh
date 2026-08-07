@@ -87,13 +87,16 @@ FULL_SWEEP_SCHEMA = {
         "onboarding_gate_verified": {"type": "boolean"},
         "authoritative_roster": {
             "type": "object",
-            "required": ["kind", "id", "source", "observed_at", "workspace_ids"],
+            "required": [
+                "kind", "id", "source", "observed_at", "workspace_ids", "checksum",
+            ],
             "properties": {
                 "kind": {"enum": ["authoritative_workspace_roster"]},
                 "id": {"type": "string"},
                 "source": {"enum": ["finsider-verification:list_workspaces"]},
                 "observed_at": {"type": "string"},
                 "workspace_ids": {"type": "array", "items": {"type": "string"}},
+                "checksum": {"type": "string"},
             },
         },
         "workspace_roster": {

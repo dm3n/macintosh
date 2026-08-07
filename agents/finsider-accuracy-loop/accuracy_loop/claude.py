@@ -29,7 +29,6 @@ VERIFICATION_READ_TOOLS = (
 )
 VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS + (
     "mcp__finsider-verification__trigger_verification_run",
-    "mcp__finsider-verification__scan_discrepancies",
     "mcp__finsider-verification__reconcile_deletions",
 )
 READ_BUILTINS = ("Read", "Glob", "Grep", "WebFetch", "WebSearch", "StructuredOutput")
@@ -60,6 +59,7 @@ SENSITIVE_ENV_FRAGMENTS = (
 SAFE_READ_TOOLS = (
     "mcp__finsider-accuracy-tools__inspect_repo",
     "mcp__finsider-accuracy-tools__run_test",
+    "mcp__finsider-accuracy-tools__compute_roster_snapshot",
 )
 SAFE_DELIVERY_TOOLS = SAFE_READ_TOOLS + (
     "mcp__finsider-accuracy-tools__commit_changes",

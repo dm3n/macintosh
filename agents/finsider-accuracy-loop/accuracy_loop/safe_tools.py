@@ -2,16 +2,20 @@
 """Narrow MCP command service for the continuous accuracy loop."""
 
 import json
+import hashlib
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 
 ALLOWED_ROOTS = (
     "/Users/dm3n/finsider-platform",
     "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees",
 )
+DELIVERY_ROOT = "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees"
 ALLOWED_BASES = {
     "Mitch-be": "development",
     "Mitch-fe": "development",
@@ -30,12 +34,31 @@ PLAIN_ENGLISH_FIELDS = (
     "**How to check it in two minutes.**",
     "**If this is wrong.**",
 )
+FORBIDDEN_DELIVERY_PATHS = (
+    re.compile(r"^\.github/(?:workflows|actions)/"),
+    re.compile(r"^\.circleci/"),
+    re.compile(r"^(?:azure-pipelines|vercel|netlify)\.(?:yml|yaml|json|toml)$"),
+    re.compile(r"^(?:Dockerfile|docker-compose(?:\.[^.]+)?\.ya?ml)$"),
+    re.compile(r"^(?:infra|infrastructure|terraform|kubernetes|k8s|deploy)/"),
+    re.compile(r"^scripts/.*(?:deploy|release|publish)"),
+)
+SANITIZED_FILENAMES = {
+    ".npmrc", ".pypirc", ".yarnrc", ".yarnrc.yml", "credentials", "credentials.json",
+}
 
 
 def _cwd():
     cwd = os.path.realpath(os.getcwd())
     if not any(cwd == root or cwd.startswith(root + os.sep) for root in ALLOWED_ROOTS):
         raise ValueError("working directory is outside the Finsider allowlist")
+    return cwd
+
+
+def _delivery_cwd():
+    cwd = _cwd()
+    delivery_root = os.path.realpath(DELIVERY_ROOT)
+    if not cwd.startswith(delivery_root + os.sep):
+        raise ValueError("delivery is restricted to persisted accuracy worktrees")
     return cwd
 
 
@@ -75,6 +98,89 @@ def _safe_test_environment():
         "CI": "true",
     })
     return environment
+
+
+def _sanitize_test_copy(source):
+    sandbox_root = tempfile.mkdtemp(prefix="finsider-accuracy-test-")
+    copied = os.path.join(sandbox_root, "repo")
+    copy = subprocess.run(
+        ["/bin/cp", "-cR", source, copied],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if copy.returncode != 0:
+        shutil.rmtree(sandbox_root, ignore_errors=True)
+        raise RuntimeError("unable to clone test sandbox: %s" % copy.stderr.strip())
+    for root, directories, files in os.walk(copied):
+        directories[:] = [name for name in directories if name != ".git"]
+        git_directory = os.path.join(root, ".git")
+        if os.path.isdir(git_directory):
+            shutil.rmtree(git_directory)
+        for filename in files:
+            if filename == ".git" or filename == ".env" or filename.startswith(".env.") or (
+                filename in SANITIZED_FILENAMES
+            ):
+                os.unlink(os.path.join(root, filename))
+    return sandbox_root, copied
+
+
+def _sandbox_profile(test_root, dependency_root=None):
+    readable = [
+        "/usr", "/bin", "/sbin", "/opt", "/private", "/dev",
+        "/Users/dm3n/.local/share/fnm", test_root,
+    ]
+    if dependency_root and os.path.isdir(dependency_root):
+        readable.append(dependency_root)
+    read_rules = " ".join("(subpath %s)" % json.dumps(path) for path in readable)
+    return " ".join((
+        "(version 1)",
+        "(deny default)",
+        "(import \"system.sb\")",
+        "(allow file-read* file-test-existence %s)" % read_rules,
+        "(allow file-map-executable %s)" % read_rules,
+        "(allow process*)",
+        "(allow file-write* (subpath %s) (subpath \"/tmp\") "
+        "(subpath \"/private/tmp\") (literal \"/dev/null\"))" % json.dumps(test_root),
+        "(deny network*)",
+    ))
+
+
+def _run_sandboxed_test(command, timeout):
+    source = _cwd()
+    sandbox_root, copied = _sanitize_test_copy(source)
+    repository = _repository_name(source)
+    dependency_root = os.path.join("/Users/dm3n/finsider-platform", repository, "node_modules")
+    if not os.path.exists(os.path.join(copied, "node_modules")) and os.path.isdir(
+        dependency_root
+    ):
+        os.symlink(dependency_root, os.path.join(copied, "node_modules"))
+    environment = _safe_test_environment()
+    environment["HOME"] = os.path.join(sandbox_root, "home")
+    environment["XDG_CONFIG_HOME"] = os.path.join(sandbox_root, "home", ".config")
+    environment["NPM_CONFIG_CACHE"] = os.path.join(sandbox_root, "npm-cache")
+    os.makedirs(environment["XDG_CONFIG_HOME"], exist_ok=True)
+    profile = _sandbox_profile(sandbox_root, dependency_root)
+    try:
+        result = subprocess.run(
+            ["/usr/bin/sandbox-exec", "-p", profile, "--"] + command,
+            cwd=copied,
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        output = ((result.stdout or "") + (
+            "\n" + result.stderr if result.stderr else ""
+        )).strip()
+        if result.returncode != 0:
+            raise RuntimeError(
+                "sandboxed test exited %s: %s" % (result.returncode, output[-4000:])
+            )
+        return output[-12000:]
+    finally:
+        shutil.rmtree(sandbox_root, ignore_errors=True)
 
 
 def _validated_test_command(runner, args):
@@ -131,17 +237,75 @@ def inspect_repo(arguments):
     raise ValueError("unknown read-only Git operation")
 
 
+def compute_roster_snapshot(arguments):
+    roster = arguments.get("workspace_roster")
+    observed_at = arguments.get("observed_at")
+    if not isinstance(roster, list) or not roster or not isinstance(observed_at, str):
+        raise ValueError("workspace_roster and observed_at are required")
+    canonical = []
+    workspace_ids = []
+    for workspace in roster:
+        if not isinstance(workspace, dict) or not isinstance(workspace.get("workspace_id"), str):
+            raise ValueError("every roster item needs a string workspace_id")
+        workspace_ids.append(workspace["workspace_id"])
+        canonical.append({
+            key: workspace.get(key)
+            for key in (
+                "workspace_id", "name", "lifecycle", "included", "latest_sync_at",
+                "exclusion_reason",
+            )
+            if key in workspace
+        })
+    if len(workspace_ids) != len(set(workspace_ids)):
+        raise ValueError("workspace IDs must be unique")
+    canonical.sort(key=lambda item: str(item.get("workspace_id")))
+    checksum = hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return json.dumps({
+        "checksum": checksum,
+        "id": "roster:%s:%s" % (checksum, observed_at),
+        "workspace_ids": workspace_ids,
+    }, sort_keys=True)
+
+
 def run_test(arguments):
     command = _validated_test_command(arguments.get("runner"), arguments.get("args", []))
     timeout = arguments.get("timeout_seconds", 1800)
     if type(timeout) is not int or timeout < 1 or timeout > 3600:
         raise ValueError("timeout_seconds must be between 1 and 3600")
-    return _run(command, environment=_safe_test_environment(), timeout=timeout)
+    return _run_sandboxed_test(command, timeout)
+
+
+def _path_is_forbidden(path):
+    normalized = path.replace(os.sep, "/")
+    if normalized.startswith("./"):
+        normalized = normalized[2:]
+    return any(pattern.search(normalized) for pattern in FORBIDDEN_DELIVERY_PATHS)
+
+
+def _assert_delivery_paths_safe(cwd):
+    repository = _repository_name(cwd)
+    base = ALLOWED_BASES[repository]
+    paths = set()
+    for command in (
+        ["git", "diff", "--name-only", "HEAD"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        ["git", "diff", "--name-only", "origin/%s...HEAD" % base],
+    ):
+        output = _run(command, cwd=cwd, timeout=60)
+        paths.update(line.strip() for line in output.splitlines() if line.strip())
+    forbidden = sorted(path for path in paths if _path_is_forbidden(path))
+    if forbidden:
+        raise ValueError("delivery includes forbidden workflow/deployment paths: %s" % ", ".join(
+            forbidden
+        ))
 
 
 def commit_changes(arguments):
-    cwd = _cwd()
+    cwd = _delivery_cwd()
     _branch(cwd)
+    _assert_delivery_paths_safe(cwd)
     message = arguments.get("message", "")
     if not isinstance(message, str) or not re.fullmatch(r"[a-z]+(?:\([^)]+\))?: .{3,120}", message):
         raise ValueError("commit message must use a concise conventional-commit subject")
@@ -156,8 +320,9 @@ def commit_changes(arguments):
 
 
 def push_branch(_arguments):
-    cwd = _cwd()
+    cwd = _delivery_cwd()
     branch = _branch(cwd)
+    _assert_delivery_paths_safe(cwd)
     if _run(["git", "status", "--porcelain"], cwd=cwd, timeout=30):
         raise ValueError("worktree must be clean before push")
     return _run(
@@ -176,7 +341,7 @@ def _repository_name(cwd):
 
 
 def create_or_view_pr(arguments):
-    cwd = _cwd()
+    cwd = _delivery_cwd()
     branch = _branch(cwd)
     repository = _repository_name(cwd)
     base = arguments.get("base")
@@ -214,6 +379,7 @@ def create_or_view_pr(arguments):
 
 TOOL_HANDLERS = {
     "inspect_repo": inspect_repo,
+    "compute_roster_snapshot": compute_roster_snapshot,
     "run_test": run_test,
     "commit_changes": commit_changes,
     "push_branch": push_branch,
@@ -231,6 +397,18 @@ TOOLS = [
                 "ref": {"type": "string"},
             },
             "required": ["operation"],
+        },
+    },
+    {
+        "name": "compute_roster_snapshot",
+        "description": "Compute the canonical checksum and immutable ID for a full-sweep roster.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "workspace_roster": {"type": "array", "items": {"type": "object"}},
+                "observed_at": {"type": "string"},
+            },
+            "required": ["workspace_roster", "observed_at"],
         },
     },
     {

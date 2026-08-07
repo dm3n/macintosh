@@ -70,6 +70,15 @@ class SafetyGuardTests(unittest.TestCase):
     def test_phase_tool_policy_denies_unknown_and_mutating_mcp_tools(self):
         self.assertIsNone(tool_blocked_reason("spec", "StructuredOutput", {}))
         self.assertIsNotNone(tool_blocked_reason("code", "Bash", {"command": "git status"}))
+        self.assertIsNone(tool_blocked_reason("code", "Edit", {
+            "file_path": "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees/Mitch-be-ACC-1/src/report.js"
+        }))
+        self.assertIsNotNone(tool_blocked_reason("code", "Edit", {
+            "file_path": "/Users/dm3n/finsider-platform/Mitch-be/src/report.js"
+        }))
+        self.assertIsNotNone(tool_blocked_reason("code", "Write", {
+            "file_path": "/Users/dm3n/finsider-platform/.accuracy-supervisor/worktrees/Mitch-be-ACC-1/.github/workflows/deploy.yml"
+        }))
         self.assertIsNone(tool_blocked_reason(
             "spec", "mcp__finsider-verification__list_workspaces", {}
         ))
@@ -81,6 +90,9 @@ class SafetyGuardTests(unittest.TestCase):
         ))
         self.assertIsNotNone(tool_blocked_reason(
             "code", "mcp__finsider-verification__review_discrepancy", {}
+        ))
+        self.assertIsNotNone(tool_blocked_reason(
+            "proof", "mcp__finsider-verification__scan_discrepancies", {}
         ))
         self.assertIsNotNone(tool_blocked_reason(
             "proof", "mcp__finsider-verification__reconcile_deletions", {"apply": True}
