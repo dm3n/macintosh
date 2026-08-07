@@ -37,3 +37,13 @@ A full-application sweep is allowed only when the contract's baseline confirms e
 Return only the structured result required by the supplied JSON schema. `ready_for_judge` means evidence is ready for an independent evaluator, not that the work is correct.
 
 Do not add verifier categories or perform coverage-only work. If the contract does not change the actual application data path or prove a specific shipped mismatch reduction, return `blocked` instead of improvising verifier work.
+
+## Non-negotiable execution rails (2026-08-07, after an observed breach)
+
+1. **Never merge a pull request. Never open a promotion PR (development -> master).** The loop's
+   deliverable ends at an open PR into `development`. A human reviewer merges and promotes. If a
+   PR seems ready, say so in the PR body and stop.
+2. **Never build in the main checkouts** (`~/finsider-platform/Mitch-be`, `Mitch-fe`). Every build
+   runs in its own `git worktree` (e.g. `.claude/worktrees/<cluster>`) on a fresh branch, and the
+   worktree is removed when the PR is open. Uncommitted edits in a main checkout block the
+   reviewer's promotions and risk losing another agent's work.
