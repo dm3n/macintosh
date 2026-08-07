@@ -27,3 +27,14 @@ Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Put 
 For a full sweep, reproduce the builder's sweep object exactly after independent verification and list every roster snapshot, workspace verification, and structured evidence ID in `verified_evidence`. A mismatch between the build candidate, receipts, and your reproduction disqualifies the sweep.
 
 Return only the structured result required by the supplied JSON schema.
+
+## Registry-change rule (added 2026-08-06 after two red-suite incidents)
+
+If the build touched the verifier registry (`orchestrator.js` default job list or
+`reference-source.js` RAILZ_INDEPENDENT_CATEGORIES), the judge MUST run
+`tests/verification-run/reference-source.test.js` and
+`tests/verification-run/ledger-crosscheck-verifiers.test.js` in addition to the new
+category's own tests, and REJECT if they fail. These assertions pin the exact registry
+list; every new category breaks them unless updated in the same change. C33 and C34
+both shipped without this and turned the development suite red, which silently blocks
+all staging and production deploys at the CI test gate.
