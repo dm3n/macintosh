@@ -75,9 +75,16 @@ If the fix you want to contract lives outside those six repositories, it is not 
 contract — route it as `operations` (a ticket naming the owner) instead.
 
 **2. If every remaining mismatch is blocked on a merge or deploy you do not control, do NOT
-retry looking for code work that does not exist.** Emit exactly ONE `proof` contract on the
-single highest-value blocked item and say plainly in the summary that the cycle is
-deploy-blocked, naming the PRs. Then stop. That is a valid, honest cycle.
+retry looking for code work that does not exist.** Say plainly in the summary that the cycle is
+deploy-blocked and name the blocking PRs. Then stop. That is a valid, honest cycle.
+
+CORRECTION (2026-08-08, second pass): an earlier version of this rule told you to emit a
+`proof` contract in that situation. That was wrong and it contradicted the re-measurement rule
+below — ws162 Mizrahi was re-measured FOUR times (runs 558, 561, 567, 569) for byte-identical
+findings because of it. When the cycle is deploy-blocked, **do not contract a proof that
+re-runs a verification**. Cite the EXISTING baseline evidence IDs you already hold. A new run
+against undeployed code cannot produce new information, and each one costs a real verification
+job. Report the blocked state and stop.
 
 **Do not re-measure the same baseline more than twice.** If a workspace/period has produced
 byte-identical findings on two consecutive runs and nothing has deployed in between, a third
