@@ -12,11 +12,11 @@ This is not a cron job. The next phase starts as soon as the prior phase ends. T
 - Customer-number-changing work is held as `NEEDS CPA REVIEW`.
 - Each Claude role has a fresh context. Spec and judge cannot edit files. No role can spawn nested agents.
 - Claude runs without permission bypass or general shell access, with a deny-by-default phase tool policy, a strict MCP list, an all-tool safety hook, and production/deployment credentials removed from child environments. A narrow local service handles approved tests and safe Git/PR delivery. Tests run in a sanitized, network-denied macOS sandbox; automated delivery rejects CI workflow, deployment, and infrastructure paths.
-- The supervisor, not Claude, decides completion.
+- The supervisor, not Claude, decides certification.
 
-## Completion gate
+## Certification gate
 
-The loop exits cleanly only after two different, independently judged full-application sweeps prove:
+The current dynamic roster becomes certified only after two different, independently judged full-application sweeps prove:
 
 - the authoritative workspace roster is complete, every active workspace is included and fresh, and every exclusion has an explicit lifecycle reason;
 - zero mismatches, errors, unknowns, stale items, or unresolved surfaces;
@@ -26,6 +26,8 @@ The loop exits cleanly only after two different, independently judged full-appli
 - the second sweep uses a different immutable verification run for every active workspace.
 
 Tickets, explanations, owners, stale connections, unsupported providers, open PRs, and CPA holds remain blockers. They never count as accuracy.
+
+The process does not exit after certification. It continues fresh fleet sweeps forever. A roster change, newly onboarded workspace, mismatch, stale source, skipped check, missing surface, or failed invariant immediately returns the state to running and restarts the two-sweep sequence.
 
 ## Install and activate
 
@@ -93,5 +95,7 @@ The recorded phase resumes after a restart. Do not hand-edit `STATE.json` while 
 ## Delivery behavior
 
 Code work is isolated under the runtime worktree directory. The branch name starts with `agent/accuracy-` and the PR targets the configured repository base branch. The work unit's idempotency key is used to find an existing branch, PR, ticket, comment, or verification job after a crash.
+
+A passing code PR is queued as a delivery `CANDIDATE`; it is not completed accuracy. The queue blocks new code until a linked post-deployment proof independently reproduces a positive before count moving to exactly zero with no additional skips, denominator shrinkage, recycled evidence, or adjacent regressions. Operations artifacts are recorded separately and never count as accuracy.
 
 The legacy state under `.accuracy-fix-loop` and the old tie-out state under `~/.claude/scripts/tieout-loop` are retained as historical input. They are not deleted and cannot satisfy the new completion gate.

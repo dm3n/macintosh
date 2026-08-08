@@ -14,7 +14,7 @@
 - No open PR, ticket, explanation, skipped check, or tolerated residual counts as accuracy.
 - One non-quarantined delivery candidate may be in flight at a time.
 - Every current and future authoritative active workspace is in scope.
-- Completion requires two fresh independent full-fleet sweeps with zero mismatches, errors, unknowns, stale data, unresolved surfaces, blockers, or pending candidates.
+- Certification requires two fresh independent full-fleet sweeps with zero mismatches, errors, unknowns, stale data, unresolved surfaces, blockers, or pending candidates. The daemon then continues dynamic-roster sweeps forever.
 
 ---
 
@@ -124,7 +124,7 @@
 - [ ] Merge to canonical `main`, push, and rerun the full suite on the merged result.
 - [ ] Gracefully stop and reactivate `com.finsider.accuracy-loop` from canonical source.
 - [ ] Import the current open and merged-but-unproved PR backlog into `delivery_candidates`, quarantining PR #1130.
-- [ ] Verify live state has zero retries, no stale active contract, a visible delivery queue, and no pre-deployment PR counted as newly completed accuracy work.
+- [ ] Verify live state has zero retries, no stale active contract, a visible delivery queue, no pre-deployment PR counted as newly completed accuracy work, and no successful-certification exit path.
 
 ### Task 8: Brain continuity
 

@@ -135,6 +135,9 @@ class StateModelTests(unittest.TestCase):
 
         self.assertEqual(state["phase"], "spec")
         self.assertEqual(state["status"], "running")
+        self.assertEqual(state["delivery_candidates"], [])
+        self.assertEqual(state["completed_operation_ids"], [])
+        self.assertEqual(state["historical_completed_contract_ids"], [])
         self.assertEqual(set(state["coverage"]), set(REQUIRED_DOMAINS))
         self.assertTrue(all(item["status"] == "unknown" for item in state["coverage"].values()))
 
@@ -171,17 +174,23 @@ class StateModelTests(unittest.TestCase):
             self.assertEqual(migrated["blockers"][0]["id"], "ACC-LEGACY")
             self.assertEqual(migrated["blockers"][0]["evidence_needed"], ["Need a fresh sync."])
 
-    def test_existing_v2_state_defaults_completed_contract_ids(self):
+    def test_existing_v2_state_defaults_convergence_lists(self):
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "STATE.json")
             existing = new_state()
             existing.pop("completed_contract_ids", None)
+            existing.pop("delivery_candidates", None)
+            existing.pop("completed_operation_ids", None)
+            existing.pop("historical_completed_contract_ids", None)
             with open(path, "w") as state_file:
                 json.dump(existing, state_file)
 
             loaded = load_state(path)
 
             self.assertEqual(loaded["completed_contract_ids"], [])
+            self.assertEqual(loaded["delivery_candidates"], [])
+            self.assertEqual(loaded["completed_operation_ids"], [])
+            self.assertEqual(loaded["historical_completed_contract_ids"], [])
 
     def test_two_distinct_complete_sweeps_finish(self):
         state = new_state()
@@ -190,7 +199,7 @@ class StateModelTests(unittest.TestCase):
         self.assertFalse(record_accepted_sweep(state, complete_sweep("sweep-1")))
         self.assertTrue(record_accepted_sweep(state, second))
 
-        self.assertEqual(state["status"], "complete")
+        self.assertEqual(state["status"], "certified")
         self.assertEqual([item["sweep_id"] for item in state["clean_sweeps"]], ["sweep-1", "sweep-2"])
 
     def test_same_sweep_cannot_count_twice(self):
