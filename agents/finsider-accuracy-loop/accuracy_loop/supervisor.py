@@ -27,7 +27,7 @@ from .model import (
     utc_now,
 )
 from .workspace import (
-    REPOSITORIES,
+    DEPLOYMENT_POLICIES,
     Worktree,
     create_worktree,
     remove_clean_worktree,
@@ -477,8 +477,10 @@ class Supervisor:
                     "delivery candidate is missing: %s" % ", ".join(missing)
                 )
             candidate = copy.deepcopy(raw_candidate)
-            if candidate["target_repo"] not in REPOSITORIES:
-                raise ValueError("delivery candidate repository is not allowlisted")
+            if candidate["target_repo"] not in DEPLOYMENT_POLICIES:
+                raise ValueError(
+                    "delivery candidate repository has no trusted production release policy"
+                )
             if candidate["status"] not in allowed_statuses:
                 raise ValueError("delivery candidate status is invalid")
             if candidate["domain"] not in REQUIRED_DOMAINS:
@@ -672,8 +674,10 @@ class Supervisor:
         if not work_unit.get("acceptance_assertions") or not work_unit.get("verification_plan"):
             raise AgentFailure("spec contract has no testable assertions")
         target_repo = work_unit.get("target_repo")
-        if action == "code" and target_repo not in REPOSITORIES:
-            raise AgentFailure("code contract target repository is not allowlisted")
+        if action == "code" and target_repo not in DEPLOYMENT_POLICIES:
+            raise AgentFailure(
+                "code contract target repository has no trusted production release policy"
+            )
         if action in ("operations", "proof") and target_repo is not None:
             raise AgentFailure("non-code contract cannot target a repository")
         dependency = work_unit.get("depends_on_contract_id")

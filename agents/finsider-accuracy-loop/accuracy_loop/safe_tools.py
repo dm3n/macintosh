@@ -25,7 +25,6 @@ ALLOWED_BASES = {
     "Mitch-be": "development",
     "Mitch-fe": "development",
     "AI-Agents-CFO": "main",
-    "finsider-excel-agent": "main",
     "finsider-mcp": "main",
     "finsider-agents": "main",
 }

@@ -100,4 +100,6 @@ A passing code PR is queued as a delivery `CANDIDATE`; it is not completed accur
 
 Unsafe closed PRs remain visible in `quarantined_deliveries` but are not active candidates. Backlog import takes the same process lock as the daemon and refuses to run unless the service is stopped.
 
+Code delivery is limited to repositories with a machine-verifiable production-release policy. The Excel surface remains mandatory in every fleet sweep, but `finsider-excel-agent` is operations-only until its local repository is connected to Git and its Vercel/AppSource release exposes a trusted production receipt. This prevents an Excel code candidate from entering a queue it can never prove or clear.
+
 The legacy state under `.accuracy-fix-loop` and the old tie-out state under `~/.claude/scripts/tieout-loop` are retained as historical input. They are not deleted and cannot satisfy the new completion gate.
