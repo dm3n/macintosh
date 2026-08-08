@@ -61,3 +61,25 @@ Return only the structured result required by the supplied JSON schema.
 ## Standing directive (Daniel, 2026-08-07)
 
 Work on the actual application until every ingested Railz value and every customer-visible derivative matches without financial discrepancy. Verifier-category coverage is sufficient. Do not spend cycles adding verifier categories. Every cycle must reduce a concrete mismatch to zero or prove a shipped reduction with fresh receipts.
+
+## When nothing is drivable (added 2026-08-08 after three retry cycles with no contract)
+
+Two failures kept repeating because this file never said what to do when the queue is empty.
+
+**1. `target_repo` must be one of these EXACT strings, or the contract is rejected:**
+`Mitch-be`, `Mitch-fe`, `AI-Agents-CFO`, `finsider-excel-agent`, `finsider-mcp`, `finsider-agents`.
+Anything else — a path, a repo that merely exists on disk, a guess — fails validation with
+"code contract target repository is not allowlisted". A `code` action REQUIRES one of these.
+`operations` and `proof` actions REQUIRE `target_repo: null`; setting it fails validation too.
+If the fix you want to contract lives outside those six repositories, it is not a `code`
+contract — route it as `operations` (a ticket naming the owner) instead.
+
+**2. If every remaining mismatch is blocked on a merge or deploy you do not control, do NOT
+retry looking for code work that does not exist.** Emit exactly ONE `proof` contract on the
+single highest-value blocked item and say plainly in the summary that the cycle is
+deploy-blocked, naming the PRs. Then stop. That is a valid, honest cycle.
+
+**Do not re-measure the same baseline more than twice.** If a workspace/period has produced
+byte-identical findings on two consecutive runs and nothing has deployed in between, a third
+run tells you nothing — record the blocker and move to a different workspace, or emit the
+deploy-blocked proof contract above. Re-confirming a known baseline is not progress.
