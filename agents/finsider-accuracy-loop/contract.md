@@ -8,16 +8,6 @@ Run independent Claude spec, build, and judge contexts continuously until the ap
 
 The loop exists to repair the Railz-to-customer application path. Known mismatches take priority over verification coverage work.
 
-## North star
-
-For every current and future Finsider workspace, every financial number presented by the application must be a deterministic, reproducible transformation of the authoritative ingested Railz data for the same tenant, connection, accounting method, currency, period, layer, and dimension.
-
-Finsider is accurate only when every customer-facing report, table, drilldown, export, API response, and agent output ties to that canonical source with zero unexplained discrepancy. Missing, stale, incomplete, contradictory, or unsupported source data fails closed and remains visibly uncertified. It may never be hidden, tolerated, relabelled, or presented as accurate.
-
-Every workspace follows one path: immutable Railz payload, tenant-scoped canonical financial model, deterministic statements and derivatives, complete verification, then certification. A newly discovered or onboarded workspace automatically invalidates an in-progress fleet certificate and must pass the same gate. Certification does not stop the supervisor. It keeps running fresh dynamic-roster sweeps so future workspaces cannot silently enter the product without proof.
-
-This contract guarantees Finsider's faithful transformation of the selected authoritative source. It cannot guarantee that a customer's underlying books describe economic reality correctly. Conflicting authoritative sources remain uncertified and visible until reconciled.
-
 ## What 100% means
 
 Completion requires two consecutive full-application sweeps with different sweep IDs. Each sweep must be independently accepted by the judge and satisfy every condition below:
@@ -31,7 +21,7 @@ Completion requires two consecutive full-application sweeps with different sweep
 7. UI, API, export, and agent outputs agree with the same deterministic backend source for identical workspace, period, layer, and dimension inputs.
 8. All supported historical periods, transaction layers, report dimensions, and material drilldowns are covered.
 9. The authoritative roster has one unique record per workspace. Active workspaces are included; archived, test, and unsupported workspaces have explicit exclusion reasons.
-10. No unresolved blocker or pending non-quarantined delivery candidate remains in supervisor state.
+10. No unresolved blocker remains in supervisor state.
 
 An explanation, Jira ticket, owner, open PR, CPA hold, vendor limitation, stale connection, or customer re-auth request is not accuracy. It is a blocker. The loop stays alive and continues other work.
 
@@ -72,26 +62,11 @@ Existing verifier-category coverage is sufficient. Do not select coverage-only w
 - Build performs only that contract against the Railz ingestion or downstream application path. Code uses an isolated worktree and ends in a PR. Operations and proof actions are idempotent.
 - Judge starts clean, assumes the result is wrong, and attempts to disprove the before-to-zero result with direct evidence.
 
-A correct pre-deployment code PR receives `CANDIDATE`, not `ACCEPT`. It enters the durable delivery queue and does not enter `completed_contract_ids`. Only a linked, post-deployment `mismatch_proof` may close the candidate and its proof contract. Operations work receives `COORDINATED`; tickets and comments never count as completed accuracy.
-
-Only one new non-quarantined delivery candidate may be in flight. While the queue is non-empty, the planner may select a production proof linked by `depends_on_contract_id`, or return a structured `blocked` decision with a null contract and explicit blocker. It may not create another code contract, invent coordination work, or rerun an unchanged undeployed baseline. The imported pre-upgrade backlog is allowed to exceed one temporarily, but no new code enters until it is drained.
-
 Every ordinary work unit records a positive `baseline_mismatch_count`, a `target_mismatch_count` of zero, immutable `baseline_evidence_ids`, and one or more affected `application_paths`. The only cycle allowed to start at zero is a `full_sweep` after all known mismatch measurements are zero.
 
 Allowed work kinds are `application_fix`, `data_fix`, `mismatch_proof`, and `full_sweep`. There is no verifier work kind. Contract IDs are unique and may never be reused after acceptance.
 
 One rejected code build gets one rework. A second rejection becomes a blocker and the loop advances to other work.
-
-Every accepted mismatch proof contains the same structured `production_proof` in the build and judge results:
-
-- positive `before_mismatch_count` exactly matching the contract baseline and `after_mismatch_count: 0`
-- `before_skipped_count` and `after_skipped_count`, where skips cannot increase
-- `before_denominator` and `after_denominator`, where the denominator cannot shrink
-- unique, non-empty `before_evidence_ids`, `after_evidence_ids`, and `deployment_evidence_ids`; before and after IDs cannot overlap
-- `candidate_commit`, `deployed_commit`, `deployed_at`, and a later `observed_at`
-- `adjacent_regressions: 0`
-
-Completed build receipts and the judge's independently verified evidence must contain every evidence identity. When linked to a queued candidate, `candidate_commit` must exactly match the candidate commit.
 
 Priority order is:
 
@@ -147,7 +122,7 @@ The score is the weighted sum of:
 - Freshness and provenance: 0.10
 - Safety and delivery discipline: 0.10
 
-`CANDIDATE` is the only passing pre-deployment verdict for a code action. `ACCEPT` is reserved for a post-deployment mismatch proof or a corroborated full sweep. Either passing verdict requires a score of at least `0.90` plus all five hard gates: contract met, regression evidence, source reconciled, freshness, and safety. The judge must reproduce a positive before count and a zero after count for the contracted mismatch scope. Tolerance widening, sampling, explained residuals, stale evidence, self-authored evidence without reproduction, or missing surfaces fail a hard gate.
+`ACCEPT` requires a score of at least `0.90` plus all five hard gates: contract met, regression evidence, source reconciled, freshness, and safety. The judge must reproduce a positive before count and a zero after count for the contracted mismatch scope. Tolerance widening, sampling, explained residuals, stale evidence, self-authored evidence without reproduction, or missing surfaces fail a hard gate.
 
 ## Full-sweep evidence object
 

@@ -85,9 +85,6 @@ def new_state():
         },
         "blockers": [],
         "completed_contract_ids": [],
-        "completed_operation_ids": [],
-        "historical_completed_contract_ids": [],
-        "delivery_candidates": [],
         "clean_sweeps": [],
         "contract_sha256": None,
         "last_error": None,
@@ -104,9 +101,6 @@ def load_state(path):
     if state.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("unsupported state schema version")
     state.setdefault("completed_contract_ids", [])
-    state.setdefault("completed_operation_ids", [])
-    state.setdefault("historical_completed_contract_ids", [])
-    state.setdefault("delivery_candidates", [])
     return state
 
 
@@ -136,9 +130,6 @@ def _migrate_v1_state(state):
         blockers.append(blocker)
     migrated["blockers"] = blockers
     migrated.setdefault("completed_contract_ids", [])
-    migrated.setdefault("completed_operation_ids", [])
-    migrated.setdefault("historical_completed_contract_ids", [])
-    migrated.setdefault("delivery_candidates", [])
     migrated.setdefault("action_intent", None)
     migrated.setdefault("contract_sha256", None)
     migrated["schema_version"] = SCHEMA_VERSION
@@ -620,6 +611,6 @@ def record_accepted_sweep(state, sweep):
     clean_sweeps.append(copy.deepcopy(sweep))
     state["clean_sweeps"] = clean_sweeps[-2:]
     if len(state["clean_sweeps"]) == 2:
-        state["status"] = "certified"
+        state["status"] = "complete"
         return True
     return False

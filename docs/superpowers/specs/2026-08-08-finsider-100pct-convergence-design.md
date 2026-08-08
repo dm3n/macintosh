@@ -47,12 +47,12 @@ The supervisor, not agent prose, enforces:
 
 ## Current recovery
 
-The existing pending PR backlog is imported into the delivery queue. PR #1130 is quarantined as unsafe. Open CPA-review candidates and merged-but-unproved candidates are retained as pending work. The old completed-contract history moves to an explicitly historical list, while the new proof sequence starts empty. No pre-deployment acceptance can count as accuracy completion.
+The existing pending PR backlog is imported into the delivery queue. PR #1130 is quarantined as unsafe. Open CPA-review candidates and merged-but-unproved candidates are retained as pending work. The old completed-contract history remains historical, but no pre-deployment acceptance after this upgrade can count as accuracy completion.
 
 The loop does not autonomously merge or deploy financial code. Institutional-grade accuracy requires review separation. It continuously monitors the delivery gate, resumes proof immediately after an authorized deployment, and keeps the exact production mismatch open until zero is independently reproduced.
 
 ## Completion
 
-The supervisor declares the current roster certified only after two independent full-fleet sweeps prove every active workspace accurate across all required surfaces and there are no unresolved blockers or pending candidates. It does not stop. It keeps running fresh dynamic-roster certification sweeps; a changed roster or failed invariant immediately returns the state to running and restarts the two-sweep sequence. Future workspaces therefore cannot silently enter the product without certification.
+The supervisor stops only after two independent full-fleet sweeps prove every current active workspace accurate across all required surfaces and there are no unresolved blockers or pending candidates. Future workspaces are covered by the same mandatory onboarding gate, so they cannot silently enter the product without certification.
 
 Until those conditions are met, the honest accuracy certification is incomplete regardless of PR count, ticket count, agent confidence, or elapsed cycles.

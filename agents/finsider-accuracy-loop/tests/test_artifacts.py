@@ -13,7 +13,7 @@ INSTALLER = os.path.join(ROOT, "install.sh")
 
 
 class RuntimeArtifactTests(unittest.TestCase):
-    def test_launchd_keeps_the_long_running_supervisor_loaded(self):
+    def test_launchd_is_persistent_but_does_not_restart_clean_completion(self):
         with open(PLIST, "rb") as plist_file:
             config = plistlib.load(plist_file)
 

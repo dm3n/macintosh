@@ -18,9 +18,7 @@ General shell access is unavailable. Use the read-only `finsider-accuracy-tools`
 
 ## Verdict
 
-Score exactly against the global rubric. For code actions, `CANDIDATE` requires at least `0.90`, every hard gate, a verified open PR handoff, and the required tests. A code action can never receive `ACCEPT`. A candidate is not accuracy and must not receive proved coverage updates. `ACCEPT` is reserved for independently reproduced post-deployment mismatch proof or a corroborated full sweep. Return `REJECT` for a fixable contract failure. Return `BLOCKED` only when the work unit cannot proceed without named external evidence or authorization.
-
-For a mismatch proof, independently reconstruct the entire `production_proof` object. Verify the linked candidate commit is contained in the deployed application, the observation follows deployment, the positive before count matches immutable contract evidence, the after count is exactly zero, skips did not rise, the denominator did not shrink, evidence is fresh and disjoint, and adjacent surfaces have zero regressions. Copy the exact independently reproduced object into your result and list every before, after, and deployment evidence ID in `verified_evidence`. Any disagreement with the build object is a hard rejection.
+Score exactly against the global rubric. `ACCEPT` requires at least `0.90` and every hard gate. Return `REJECT` for a fixable contract failure. Return `BLOCKED` only when the work unit cannot proceed without named external evidence or authorization.
 
 For coverage updates, mark a domain `proved` only with reproducible evidence that covers its whole contract. Use `partial` for any gap.
 
@@ -42,7 +40,3 @@ clearing on mismatch-count alone. To accept any "family cleared" claim you MUST 
 2. the category's `skipped` count did not rise between the baseline and the after run, AND
 3. the total check count for the category is unchanged (a shrinking denominator hides regressions).
 If mismatches fell while skips rose, that is a REJECT with the suppression named explicitly.
-
-## North star
-
-For every current and future Finsider workspace, every report, table, drilldown, export, API response, and agent number must be a deterministic, reproducible transformation of the authoritative ingested Railz data. Missing, stale, contradictory, or unsupported source data fails closed and remains uncertified. Never convert confidence, a PR, a ticket, an explanation, a tolerance, or a skipped row into accuracy.

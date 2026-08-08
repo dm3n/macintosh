@@ -32,8 +32,6 @@ Perform one idempotent, non-destructive coordination action. Open or update the 
 
 Trigger and inspect only verification or dry-run calculations that cannot change customer books. Reuse an in-flight job carrying the idempotency key. If a job is still running, return its ID and a `wait_seconds` value no greater than 300.
 
-For an ordinary `mismatch_proof`, first prove that the candidate or authorized correction is in the production data path. Then reproduce the exact baseline against immutable evidence and run a fresh, complete after comparison. Populate `production_proof` with every required field from the global contract. The before count must match the contract, the after count must be zero, skips cannot rise, the denominator cannot shrink, before and after evidence IDs cannot overlap, the observation must follow deployment, and adjacent regressions must be zero. Return completed receipts for every before, after, and deployment evidence ID. If any invariant is unavailable or fails, return `blocked` or `failed`; never manufacture a zero.
-
 A full-application sweep is allowed only when the contract's baseline confirms every known mismatch measurement is already zero. It must obtain a fresh authoritative roster snapshot from `finsider-verification:list_workspaces`, enumerate every workspace including explicit lifecycle exclusions, and cover all 20 required domains with no sampling. The roster observation must follow the data, sync, and deployment watermarks; use `compute_roster_snapshot` to produce the contract-defined checksum and bound ID. Each active workspace needs a unique completed verification ID observed after its own latest sync and the latest deployment watermark. Every domain and every required surface must carry structured evidence with immutable source/run IDs plus workspace, period, layer, dimension, and surface scope. Return a completed receipt for the roster snapshot, every active-workspace verification ID, and every structured evidence ID. Include `full_sweep` only when the supplied schema is completely populated. Otherwise return the precise remaining mismatch.
 
 Return only the structured result required by the supplied JSON schema. `ready_for_judge` means evidence is ready for an independent evaluator, not that the work is correct.
@@ -49,7 +47,3 @@ Do not add verifier categories or perform coverage-only work. If the contract do
    runs in its own `git worktree` (e.g. `.claude/worktrees/<cluster>`) on a fresh branch, and the
    worktree is removed when the PR is open. Uncommitted edits in a main checkout block the
    reviewer's promotions and risk losing another agent's work.
-
-## North star
-
-For every current and future Finsider workspace, every report, table, drilldown, export, API response, and agent number must be a deterministic, reproducible transformation of the authoritative ingested Railz data. Missing, stale, contradictory, or unsupported source data fails closed and remains uncertified. A PR is only a delivery candidate. It is never accuracy until fresh production evidence proves the complete before-to-zero result.

@@ -200,39 +200,6 @@ APPLICATION_PATHS = (
     "data_reconciliation",
 )
 
-PRODUCTION_PROOF_SCHEMA = {
-    "type": "object",
-    "required": [
-        "before_mismatch_count", "after_mismatch_count", "before_skipped_count",
-        "after_skipped_count", "before_denominator", "after_denominator",
-        "before_evidence_ids", "after_evidence_ids", "deployment_evidence_ids",
-        "candidate_commit", "deployed_commit", "deployed_at", "observed_at",
-        "adjacent_regressions",
-    ],
-    "properties": {
-        "before_mismatch_count": {"type": "integer", "minimum": 1},
-        "after_mismatch_count": {"type": "integer", "minimum": 0},
-        "before_skipped_count": {"type": "integer", "minimum": 0},
-        "after_skipped_count": {"type": "integer", "minimum": 0},
-        "before_denominator": {"type": "integer", "minimum": 1},
-        "after_denominator": {"type": "integer", "minimum": 1},
-        "before_evidence_ids": {
-            "type": "array", "items": {"type": "string"}, "minItems": 1,
-        },
-        "after_evidence_ids": {
-            "type": "array", "items": {"type": "string"}, "minItems": 1,
-        },
-        "deployment_evidence_ids": {
-            "type": "array", "items": {"type": "string"}, "minItems": 1,
-        },
-        "candidate_commit": {"type": "string"},
-        "deployed_commit": {"type": "string"},
-        "deployed_at": {"type": "string"},
-        "observed_at": {"type": "string"},
-        "adjacent_regressions": {"type": "integer", "minimum": 0},
-    },
-}
-
 
 SPEC_SCHEMA = {
     "type": "object",
@@ -241,16 +208,16 @@ SPEC_SCHEMA = {
         "coverage_observations",
     ],
     "properties": {
-        "decision": {"enum": ["code", "operations", "proof", "blocked"]},
+        "decision": {"enum": ["code", "operations", "proof"]},
         "summary": {"type": "string"},
         "contract": {
-            "type": ["object", "null"],
+            "type": "object",
             "required": [
                 "id", "title", "action", "work_kind", "target_repo", "domain",
                 "workspace_names", "root_cause_hypothesis", "baseline_mismatch_count",
                 "target_mismatch_count", "baseline_evidence_ids", "application_paths",
                 "acceptance_assertions", "verification_plan", "moves_customer_numbers",
-                "depends_on_contract_id", "idempotency_key",
+                "idempotency_key",
             ],
             "properties": {
                 "id": {"type": "string"},
@@ -276,7 +243,6 @@ SPEC_SCHEMA = {
                 "acceptance_assertions": {"type": "array", "items": {"type": "string"}},
                 "verification_plan": {"type": "array", "items": {"type": "string"}},
                 "moves_customer_numbers": {"type": "boolean"},
-                "depends_on_contract_id": {"type": ["string", "null"]},
                 "idempotency_key": {"type": "string"},
             },
         },
@@ -305,7 +271,6 @@ BUILD_SCHEMA = {
         "moves_customer_numbers": {"type": "boolean"},
         "wait_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
         "full_sweep": FULL_SWEEP_SCHEMA,
-        "production_proof": PRODUCTION_PROOF_SCHEMA,
     },
 }
 
@@ -317,7 +282,7 @@ JUDGE_SCHEMA = {
         "wait_seconds",
     ],
     "properties": {
-        "verdict": {"enum": ["ACCEPT", "CANDIDATE", "REJECT", "BLOCKED"]},
+        "verdict": {"enum": ["ACCEPT", "REJECT", "BLOCKED"]},
         "score": {"type": "number", "minimum": 0, "maximum": 1},
         "summary": {"type": "string"},
         "hard_gates": {
@@ -341,7 +306,6 @@ JUDGE_SCHEMA = {
         "resolved_blocker_ids": {"type": "array", "items": {"type": "string"}},
         "wait_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
         "full_sweep": FULL_SWEEP_SCHEMA,
-        "production_proof": PRODUCTION_PROOF_SCHEMA,
     },
 }
 
@@ -412,17 +376,12 @@ class Supervisor:
         else:
             state = load_state(self.state_path)
             if state.get("contract_sha256") != contract_hash:
-                historical_ids = list(state.get("historical_completed_contract_ids", []))
                 completed_contract_ids = list(state.get("completed_contract_ids", []))
                 for contract_id in self._accepted_contract_ids_from_ledger():
-                    if contract_id not in historical_ids:
-                        historical_ids.append(contract_id)
-                for contract_id in completed_contract_ids:
-                    if contract_id not in historical_ids:
-                        historical_ids.append(contract_id)
+                    if contract_id not in completed_contract_ids:
+                        completed_contract_ids.append(contract_id)
                 self._reset_cycle(state)
-                state["completed_contract_ids"] = []
-                state["historical_completed_contract_ids"] = historical_ids
+                state["completed_contract_ids"] = completed_contract_ids
                 state["contract_sha256"] = contract_hash
                 state["clean_sweeps"] = []
                 state["status"] = "running"
@@ -441,79 +400,12 @@ class Supervisor:
         with open(self.ledger_path) as ledger:
             for line in ledger:
                 fields = [field.strip() for field in line.split("|", 3)]
-                if (
-                    len(fields) != 4
-                    or fields[1] != "judge"
-                    or fields[2] not in ("ACCEPT", "ACCURACY-ACCEPT")
-                ):
+                if len(fields) != 4 or fields[1:3] != ["judge", "ACCEPT"]:
                     continue
                 match = re.search(r"\b(?:C\d+|ACC-[A-Za-z0-9][A-Za-z0-9-]*)\b", fields[3])
                 if match and match.group(0) not in accepted_ids:
                     accepted_ids.append(match.group(0))
         return accepted_ids
-
-    def import_delivery_candidates(self, candidates):
-        """Atomically import pre-upgrade PRs that still require production proof."""
-        if not isinstance(candidates, list) or not candidates:
-            raise ValueError("delivery candidate import requires a non-empty list")
-        required = (
-            "contract_id", "title", "target_repo", "workspace_names", "domain",
-            "baseline_mismatch_count", "baseline_evidence_ids", "application_paths",
-            "pr_url", "commit", "branch", "moves_customer_numbers", "status",
-        )
-        allowed_statuses = (
-            "awaiting_review", "awaiting_production_proof", "quarantined"
-        )
-        normalized = []
-        for raw_candidate in candidates:
-            if not isinstance(raw_candidate, dict):
-                raise ValueError("delivery candidate must be an object")
-            missing = [field for field in required if field not in raw_candidate]
-            if missing:
-                raise ValueError(
-                    "delivery candidate is missing: %s" % ", ".join(missing)
-                )
-            candidate = copy.deepcopy(raw_candidate)
-            if candidate["target_repo"] not in REPOSITORIES:
-                raise ValueError("delivery candidate repository is not allowlisted")
-            if candidate["status"] not in allowed_statuses:
-                raise ValueError("delivery candidate status is invalid")
-            if candidate["domain"] not in REQUIRED_DOMAINS:
-                raise ValueError("delivery candidate domain is invalid")
-            candidate.setdefault("queued_at", utc_now())
-            normalized.append(candidate)
-
-        self.ensure_runtime()
-        state = load_state(self.state_path)
-        imported_ids = [candidate["contract_id"] for candidate in normalized]
-        if len(imported_ids) != len(set(imported_ids)):
-            raise ValueError("delivery candidate contract IDs must be unique")
-        historical_ids = state.setdefault("historical_completed_contract_ids", [])
-        for contract_id in imported_ids:
-            if (
-                contract_id in state.get("completed_contract_ids", [])
-                and contract_id not in historical_ids
-            ):
-                historical_ids.append(contract_id)
-        state["completed_contract_ids"] = [
-            contract_id for contract_id in state.get("completed_contract_ids", [])
-            if contract_id not in imported_ids
-        ]
-        state["delivery_candidates"] = [
-            candidate for candidate in state.get("delivery_candidates", [])
-            if candidate.get("contract_id") not in imported_ids
-        ] + normalized
-        self._reset_cycle(state)
-        state["status"] = "running"
-        state["clean_sweeps"] = []
-        state["last_sweep_errors"] = [
-            "unproved delivery backlog imported; fleet certification restarted"
-        ]
-        save_state(self.state_path, state)
-        self._append_ledger(
-            "supervisor", "BACKLOG-IMPORTED",
-            "%s candidates imported; production proof required" % len(normalized),
-        )
 
     def _append_ledger(self, phase, outcome, summary):
         safe_summary = " ".join(str(summary).splitlines()).strip()
@@ -534,11 +426,6 @@ class Supervisor:
             "coverage": state.get("coverage"),
             "blockers": state.get("blockers"),
             "completed_contract_ids": state.get("completed_contract_ids"),
-            "completed_operation_ids": state.get("completed_operation_ids"),
-            "historical_completed_contract_ids": state.get(
-                "historical_completed_contract_ids"
-            ),
-            "delivery_candidates": state.get("delivery_candidates"),
             "active_contract": state.get("active_contract"),
             "spec_result": state.get("spec_result"),
             "build_result": state.get("build_result"),
@@ -595,7 +482,7 @@ class Supervisor:
             }
 
     def _validate_contract(self, result, state):
-        work_unit = result.get("contract") or {}
+        work_unit = result.get("contract", {})
         action = work_unit.get("action")
         if result.get("decision") != action:
             raise AgentFailure("spec decision and contract action disagree")
@@ -605,12 +492,6 @@ class Supervisor:
             raise AgentFailure("spec contract is missing its identity")
         if work_unit.get("id") in state.get("completed_contract_ids", []):
             raise AgentFailure("spec contract ID was already accepted and cannot be reused")
-        candidates = self._pending_delivery_candidates(state)
-        if any(
-            item.get("contract_id") == work_unit.get("id")
-            for item in state.get("delivery_candidates", [])
-        ):
-            raise AgentFailure("spec contract ID already belongs to a delivery candidate")
         work_kind = work_unit.get("work_kind")
         allowed_work_kinds = {
             "code": {"application_fix"},
@@ -647,49 +528,6 @@ class Supervisor:
             raise AgentFailure("code contract target repository is not allowlisted")
         if action in ("operations", "proof") and target_repo is not None:
             raise AgentFailure("non-code contract cannot target a repository")
-        dependency = work_unit.get("depends_on_contract_id")
-        if action in ("code", "operations") and dependency is not None:
-            raise AgentFailure("code and operations contracts cannot depend on a candidate")
-        if action in ("code", "operations") and candidates:
-            raise AgentFailure(
-                "a delivery candidate is already in flight; only linked production proof is allowed"
-            )
-        if work_kind == "full_sweep":
-            if dependency is not None:
-                raise AgentFailure("a full sweep cannot depend on one delivery candidate")
-            if candidates:
-                raise AgentFailure(
-                    "a full sweep requires no pending delivery candidates"
-                )
-        elif work_kind == "mismatch_proof":
-            candidate = self._candidate_by_id(state, dependency) if dependency else None
-            if candidates and candidate is None:
-                raise AgentFailure(
-                    "production proof must link the in-flight delivery candidate"
-                )
-            if dependency and candidate is None:
-                raise AgentFailure("production proof references an unknown delivery candidate")
-            if candidate:
-                if baseline_mismatches != candidate.get("baseline_mismatch_count"):
-                    raise AgentFailure("production proof changed the candidate mismatch baseline")
-                if work_unit.get("domain") != candidate.get("domain"):
-                    raise AgentFailure("production proof changed the candidate domain")
-                if set(work_unit.get("workspace_names", [])) != set(
-                    candidate.get("workspace_names", [])
-                ):
-                    raise AgentFailure("production proof changed the candidate workspace scope")
-                if not set(candidate.get("application_paths", [])).issubset(
-                    set(application_paths)
-                ):
-                    raise AgentFailure("production proof omitted a candidate application path")
-                if not set(candidate.get("baseline_evidence_ids", [])).issubset(
-                    set(evidence_ids)
-                ):
-                    raise AgentFailure("production proof omitted candidate baseline evidence")
-        if state.get("status") == "certified" and work_kind != "full_sweep":
-            raise AgentFailure(
-                "a certified loop may only run continuing full-fleet certification sweeps"
-            )
 
     def _derive_idempotency_key(self, work_unit):
         identity = {
@@ -699,7 +537,6 @@ class Supervisor:
                 "work_kind", "baseline_mismatch_count", "target_mismatch_count",
                 "baseline_evidence_ids", "application_paths", "acceptance_assertions",
                 "verification_plan", "moves_customer_numbers",
-                "depends_on_contract_id",
             )
         }
         digest = hashlib.sha256(
@@ -755,189 +592,45 @@ class Supervisor:
         judge_ids = set(result.get("verified_evidence", []))
         return required_ids.issubset(receipt_ids) and required_ids.issubset(judge_ids)
 
-    def _pending_delivery_candidates(self, state):
-        return [
-            candidate for candidate in state.get("delivery_candidates", [])
-            if isinstance(candidate, dict) and candidate.get("status") != "quarantined"
-        ]
-
-    def _candidate_by_id(self, state, contract_id):
-        if not contract_id:
-            return None
-        for candidate in self._pending_delivery_candidates(state):
-            if candidate.get("contract_id") == contract_id:
-                return candidate
-        return None
-
-    def _judge_base_passes(self, result, verdict):
+    def _judge_accepts(self, state, result):
         gates = result.get("hard_gates", {})
         required_gates = (
             "contract_met", "regression_evidence", "source_reconciled", "freshness", "safety"
         )
-        return (
-            result.get("verdict") == verdict
+        accepted = (
+            result.get("verdict") == "ACCEPT"
             and result.get("score", 0) >= 0.90
             and all(gates.get(gate) is True for gate in required_gates)
         )
-
-    def _build_is_ready(self, state):
-        build = state.get("build_result") or {}
-        return (
-            build.get("outcome") == "ready_for_judge"
-            and bool(build.get("evidence"))
-            and bool(build.get("receipts"))
-        )
-
-    def _judge_candidate_ready(self, state, result):
+        if not accepted:
+            return False
         work_unit = state.get("active_contract") or {}
         build = state.get("build_result") or {}
         if (
-            work_unit.get("action") != "code"
-            or not self._judge_base_passes(result, "CANDIDATE")
-            or not self._build_is_ready(state)
+            build.get("outcome") != "ready_for_judge"
+            or not build.get("evidence")
+            or not build.get("receipts")
         ):
             return False
-        delivery_fields = (build.get("branch"), build.get("commit"), build.get("pr_url"))
-        if not all(isinstance(value, str) and value for value in delivery_fields):
-            return False
-        if not build.get("tests"):
-            return False
-        if (
-            work_unit.get("moves_customer_numbers") is True
-            and build.get("moves_customer_numbers") is not True
-        ):
-            return False
-        worktree = self._worktree_from_state(state)
-        return worktree is not None and self.verify_delivery_fn(
-            worktree,
-            build["pr_url"],
-            build["commit"],
-            work_unit.get("moves_customer_numbers") is True,
-        )
-
-    def _queue_delivery_candidate(self, state, work_unit, build):
-        candidate = {
-            "contract_id": work_unit["id"],
-            "title": work_unit["title"],
-            "target_repo": work_unit["target_repo"],
-            "workspace_names": copy.deepcopy(work_unit["workspace_names"]),
-            "domain": work_unit["domain"],
-            "baseline_mismatch_count": work_unit["baseline_mismatch_count"],
-            "baseline_evidence_ids": copy.deepcopy(work_unit["baseline_evidence_ids"]),
-            "application_paths": copy.deepcopy(work_unit["application_paths"]),
-            "pr_url": build["pr_url"],
-            "commit": build["commit"],
-            "branch": build["branch"],
-            "moves_customer_numbers": work_unit.get("moves_customer_numbers") is True,
-            "status": "awaiting_review",
-            "queued_at": utc_now(),
-        }
-        state["delivery_candidates"] = [
-            existing for existing in state.get("delivery_candidates", [])
-            if existing.get("contract_id") != work_unit["id"]
-        ] + [candidate]
-        state["completed_contract_ids"] = [
-            contract_id for contract_id in state.get("completed_contract_ids", [])
-            if contract_id != work_unit["id"]
-        ]
-
-    def _parse_proof_time(self, value):
-        if not isinstance(value, str) or not value:
-            return None
-        try:
-            timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
-            return None
-        if timestamp.tzinfo is None or timestamp.utcoffset() is None:
-            return None
-        return timestamp
-
-    def _production_proof_accepts(self, state, result):
-        work_unit = state.get("active_contract") or {}
-        build = state.get("build_result") or {}
-        proof = result.get("production_proof")
-        if not isinstance(proof, dict) or build.get("production_proof") != proof:
-            return False
-        integer_fields = (
-            "before_mismatch_count", "after_mismatch_count", "before_skipped_count",
-            "after_skipped_count", "before_denominator", "after_denominator",
-            "adjacent_regressions",
-        )
-        if any(type(proof.get(field)) is not int for field in integer_fields):
-            return False
-        if (
-            proof["before_mismatch_count"] != work_unit.get("baseline_mismatch_count")
-            or proof["before_mismatch_count"] <= 0
-            or proof["after_mismatch_count"] != 0
-            or proof["before_skipped_count"] < 0
-            or proof["after_skipped_count"] > proof["before_skipped_count"]
-            or proof["before_denominator"] <= 0
-            or proof["after_denominator"] < proof["before_denominator"]
-            or proof["before_mismatch_count"] > proof["before_denominator"]
-            or proof["before_skipped_count"] > proof["before_denominator"]
-            or proof["after_skipped_count"] > proof["after_denominator"]
-            or proof["adjacent_regressions"] != 0
-        ):
-            return False
-        evidence_fields = (
-            "before_evidence_ids", "after_evidence_ids", "deployment_evidence_ids"
-        )
-        for field in evidence_fields:
-            values = proof.get(field)
-            if not (
-                isinstance(values, list)
-                and values
-                and len(values) == len(set(values))
-                and all(isinstance(value, str) and value.strip() for value in values)
+        if work_unit.get("action") == "code":
+            delivery_fields = (build.get("branch"), build.get("commit"), build.get("pr_url"))
+            if not all(isinstance(value, str) and value for value in delivery_fields):
+                return False
+            if not build.get("tests"):
+                return False
+            if work_unit.get("moves_customer_numbers") is True and build.get(
+                "moves_customer_numbers"
+            ) is not True:
+                return False
+            worktree = self._worktree_from_state(state)
+            if worktree is None or not self.verify_delivery_fn(
+                worktree,
+                build["pr_url"],
+                build["commit"],
+                work_unit.get("moves_customer_numbers") is True,
             ):
                 return False
-        before_ids = set(proof["before_evidence_ids"])
-        after_ids = set(proof["after_evidence_ids"])
-        deployment_ids = set(proof["deployment_evidence_ids"])
-        if before_ids & after_ids or before_ids & deployment_ids or after_ids & deployment_ids:
-            return False
-        if not set(work_unit.get("baseline_evidence_ids", [])).issubset(before_ids):
-            return False
-        deployed_at = self._parse_proof_time(proof.get("deployed_at"))
-        observed_at = self._parse_proof_time(proof.get("observed_at"))
-        if (
-            deployed_at is None
-            or observed_at is None
-            or observed_at < deployed_at
-            or observed_at > datetime.now(timezone.utc)
-        ):
-            return False
-        if not all(
-            isinstance(proof.get(field), str) and proof[field].strip()
-            for field in ("candidate_commit", "deployed_commit")
-        ):
-            return False
-        candidate = self._candidate_by_id(
-            state, work_unit.get("depends_on_contract_id")
-        )
-        if candidate and proof["candidate_commit"] != candidate.get("commit"):
-            return False
-        required_ids = before_ids | after_ids | deployment_ids
-        receipt_ids = {
-            receipt.get("id") for receipt in build.get("receipts", [])
-            if receipt.get("status") == "complete"
-        }
-        judge_ids = set(result.get("verified_evidence", []))
-        return required_ids.issubset(receipt_ids) and required_ids.issubset(judge_ids)
-
-    def _judge_accepts(self, state, result):
-        if not self._judge_base_passes(result, "ACCEPT") or not self._build_is_ready(state):
-            return False
-        work_unit = state.get("active_contract") or {}
-        work_kind = work_unit.get("work_kind")
-        if work_kind == "mismatch_proof":
-            return self._production_proof_accepts(state, result)
-        if work_kind != "full_sweep":
-            return False
-        full_sweep = result.get("full_sweep")
-        return isinstance(full_sweep, dict) and self._full_sweep_is_corroborated(
-            state, full_sweep, result
-        )
+        return True
 
     def _reset_cycle(self, state, wait_seconds=0):
         state["phase"] = "spec"
@@ -962,13 +655,6 @@ class Supervisor:
         completed_contract_ids = state.setdefault("completed_contract_ids", [])
         if contract_id not in completed_contract_ids:
             completed_contract_ids.append(contract_id)
-
-    def _revoke_certification(self, state, reason):
-        if state.get("status") != "certified":
-            return
-        state["status"] = "running"
-        state["clean_sweeps"] = []
-        state["last_sweep_errors"] = [reason]
 
     def _record_blocker(self, state, result):
         work_unit = state.get("active_contract") or {}
@@ -999,18 +685,6 @@ class Supervisor:
         result = self.runner.run(
             "spec", self._render_prompt("spec", state), SPEC_SCHEMA, self.finsider_dir
         )
-        if result.get("decision") == "blocked":
-            if result.get("contract") is not None or not result.get("blockers"):
-                raise AgentFailure("blocked spec requires a null contract and explicit blocker")
-            self._revoke_certification(
-                state, "continuing fleet certification was blocked"
-            )
-            state["cycle"] += 1
-            self._reconcile_blockers(state, result)
-            self._reset_cycle(state, 300)
-            save_state(self.state_path, state)
-            self._append_ledger("spec", "DEPLOY-BLOCKED", result["summary"])
-            return "retry"
         self._validate_contract(result, state)
         result["contract"]["idempotency_key"] = self._derive_idempotency_key(
             result["contract"]
@@ -1044,13 +718,6 @@ class Supervisor:
         )
         state["build_result"] = result
         state["action_intent"]["receipts"] = copy.deepcopy(result.get("receipts", []))
-        if (
-            state["active_contract"].get("work_kind") == "full_sweep"
-            and result.get("outcome") != "ready_for_judge"
-        ):
-            self._revoke_certification(
-                state, "continuing full-fleet sweep did not produce judge-ready evidence"
-            )
         wait_seconds = _bounded_wait(result.get("wait_seconds", 0))
         if result.get("outcome") == "blocked" and wait_seconds:
             state["retry_at"] = (
@@ -1069,45 +736,12 @@ class Supervisor:
             "judge", self._render_prompt("judge", state), JUDGE_SCHEMA, self._phase_cwd(state)
         )
         state["judge_result"] = result
-        work_unit = state["active_contract"]
-        delivered_worktree = self._worktree_from_state(state)
-        delivered_build = state.get("build_result") or {}
-
-        if self._judge_candidate_ready(state, result):
-            self._queue_delivery_candidate(state, work_unit, delivered_build)
-            self._resolve_accepted_blockers(state, result)
-            self._reset_cycle(state)
-            save_state(self.state_path, state)
-            self._append_ledger(
-                "judge", "CANDIDATE-READY", "%s: %s" % (work_unit["id"], result["summary"])
-            )
-            self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
-            return "spec"
-
-        if work_unit.get("action") == "operations" and self._judge_base_passes(
-            result, "ACCEPT"
-        ) and self._build_is_ready(state):
-            completed_operation_ids = state.setdefault("completed_operation_ids", [])
-            if work_unit["id"] not in completed_operation_ids:
-                completed_operation_ids.append(work_unit["id"])
-            self._resolve_accepted_blockers(state, result)
-            self._reset_cycle(state)
-            save_state(self.state_path, state)
-            self._append_ledger(
-                "judge", "COORDINATED", "%s: %s" % (work_unit["id"], result["summary"])
-            )
-            return "spec"
-
         accepted = self._judge_accepts(state, result)
+        work_unit = state["active_contract"]
         if accepted:
+            delivered_worktree = self._worktree_from_state(state)
+            delivered_build = state.get("build_result") or {}
             self._record_completed_contract(state, work_unit["id"])
-            dependency = work_unit.get("depends_on_contract_id")
-            if dependency:
-                self._record_completed_contract(state, dependency)
-                state["delivery_candidates"] = [
-                    candidate for candidate in state.get("delivery_candidates", [])
-                    if candidate.get("contract_id") != dependency
-                ]
             self._resolve_accepted_blockers(state, result)
             self._apply_coverage(state, result.get("coverage_updates"))
             full_sweep = result.get("full_sweep")
@@ -1123,34 +757,22 @@ class Supervisor:
                     "full sweep lacked matching build receipts and judge reproduction"
                 ]
             if completed:
-                self._reset_cycle(state, 60)
+                state["phase"] = "judge"
+                state["worktree"] = None
                 save_state(self.state_path, state)
                 self._append_ledger(
-                    "judge", "ACCURACY-ACCEPT",
-                    "%s: %s" % (work_unit["id"], result["summary"])
+                    "judge", "ACCEPT", "%s: %s" % (work_unit["id"], result["summary"])
                 )
-                self._append_ledger(
-                    "supervisor", "CERTIFIED",
-                    "Two clean dynamic-roster sweeps accepted; continuous monitoring remains active"
-                )
+                self._append_ledger("supervisor", "PROOF-COMPLETE", "Two clean sweeps accepted")
                 self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
-                return "retry"
+                return "complete"
             self._reset_cycle(state)
             save_state(self.state_path, state)
             self._append_ledger(
-                "judge", "ACCURACY-ACCEPT",
-                "%s: %s" % (work_unit["id"], result["summary"])
+                "judge", "ACCEPT", "%s: %s" % (work_unit["id"], result["summary"])
             )
             self._cleanup_delivered_worktree(delivered_worktree, delivered_build)
             return "spec"
-
-        if work_unit.get("work_kind") == "full_sweep":
-            self._revoke_certification(
-                state, "continuing full-fleet sweep was not independently corroborated"
-            )
-            state["last_sweep_errors"] = [
-                "full sweep lacked matching build receipts and judge reproduction"
-            ]
 
         if (
             result.get("verdict") != "BLOCKED"
@@ -1173,6 +795,8 @@ class Supervisor:
     def step(self):
         self.ensure_runtime()
         state = load_state(self.state_path)
+        if state.get("status") == "complete":
+            return "complete"
         phase = state["phase"]
         if phase not in ("spec", "build", "rework", "judge"):
             raise RuntimeError("unknown persisted phase: %s" % phase)
@@ -1187,9 +811,6 @@ class Supervisor:
                 return self._run_judge(state)
         except (AgentFailure, OSError, subprocess.SubprocessError, RuntimeError) as error:
             state = load_state(self.state_path)
-            self._revoke_certification(
-                state, "continuing certification could not obtain valid evidence"
-            )
             state["phase_attempts"] = state.get("phase_attempts", 0) + 1
             state["last_error"] = str(error)
             state["retry_at"] = _retry_timestamp(state["phase_attempts"])
@@ -1226,10 +847,14 @@ class Supervisor:
         self._append_ledger("supervisor", "START", "Persistent loop started")
         while not self.stop_event.is_set():
             state = load_state(self.state_path)
+            if state.get("status") == "complete":
+                return 0
             remaining = self._seconds_until_retry(state)
             if remaining:
                 self.sleep_fn(min(5, remaining))
                 continue
             outcome = self.step()
+            if outcome == "complete":
+                return 0
         self._append_ledger("supervisor", "STOP", "Signal received; resumable state saved")
         return 0
