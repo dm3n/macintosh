@@ -10,6 +10,11 @@ import subprocess
 import sys
 import tempfile
 
+try:
+    from .workspace import production_deployment_record
+except ImportError:  # Executed directly as the MCP server.
+    from workspace import production_deployment_record
+
 
 ALLOWED_ROOTS = (
     "/Users/dm3n/finsider-platform",
@@ -269,6 +274,22 @@ def compute_roster_snapshot(arguments):
     }, sort_keys=True)
 
 
+def inspect_production_deployment(arguments):
+    repository = arguments.get("repository")
+    candidate_commit = arguments.get("candidate_commit")
+    if repository not in ALLOWED_BASES:
+        raise ValueError("repository is not allowlisted")
+    if not isinstance(candidate_commit, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", candidate_commit
+    ):
+        raise ValueError("candidate_commit must be a full lowercase Git SHA")
+    record = production_deployment_record({
+        "target_repo": repository,
+        "commit": candidate_commit,
+    })
+    return json.dumps(record or {"verified": False}, sort_keys=True)
+
+
 def run_test(arguments):
     command = _validated_test_command(arguments.get("runner"), arguments.get("args", []))
     timeout = arguments.get("timeout_seconds", 1800)
@@ -382,6 +403,7 @@ def create_or_view_pr(arguments):
 TOOL_HANDLERS = {
     "inspect_repo": inspect_repo,
     "compute_roster_snapshot": compute_roster_snapshot,
+    "inspect_production_deployment": inspect_production_deployment,
     "run_test": run_test,
     "commit_changes": commit_changes,
     "push_branch": push_branch,
@@ -411,6 +433,18 @@ TOOLS = [
                 "observed_at": {"type": "string"},
             },
             "required": ["workspace_roster", "observed_at"],
+        },
+    },
+    {
+        "name": "inspect_production_deployment",
+        "description": "Read the trusted current production ref and successful deployment receipt that contains a candidate commit.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repository": {"enum": list(ALLOWED_BASES)},
+                "candidate_commit": {"type": "string"},
+            },
+            "required": ["repository", "candidate_commit"],
         },
     },
     {

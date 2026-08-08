@@ -42,6 +42,29 @@ REPOSITORIES = {
     "finsider-agents": Repo("/Users/dm3n/finsider-platform/finsider-agents", "main"),
 }
 
+DEPLOYMENT_POLICIES = {
+    "Mitch-be": {
+        "production_branch": "master",
+        "workflow": "master_mitch-back.yml",
+    },
+    "Mitch-fe": {
+        "production_branch": "main",
+        "environment": "Production",
+    },
+    "AI-Agents-CFO": {
+        "production_branch": "main",
+        "workflow": "deploy-production.yml",
+    },
+    "finsider-mcp": {
+        "production_branch": "main",
+        "environment": "Production",
+    },
+    "finsider-agents": {
+        "production_branch": "main",
+        "environment": "Production",
+    },
+}
+
 
 def _git(repo_path, *args, check=True):
     result = subprocess.run(
@@ -187,6 +210,184 @@ def verify_pull_request(
     if moves_customer_numbers and "NEEDS CPA REVIEW" not in payload.get("title", ""):
         return False
     return True
+
+
+def _github_repository(repo_path, runner):
+    result = runner(
+        ["gh", "repo", "view", "--json", "nameWithOwner"],
+        cwd=repo_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("unable to identify GitHub repository")
+    try:
+        return json.loads(result.stdout)["nameWithOwner"]
+    except (KeyError, ValueError) as error:
+        raise RuntimeError("gh returned malformed repository metadata") from error
+
+
+def _workflow_deployment_record(
+    repo_path, repository, workflow, candidate_commit, deployed_commit, runner
+):
+    result = runner(
+        [
+            "gh", "run", "list", "--repo", repository, "--workflow", workflow,
+            "--commit", deployed_commit, "--status", "success", "--limit", "20",
+            "--json", "databaseId,headSha,conclusion,updatedAt,url",
+        ],
+        cwd=repo_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("unable to inspect production deployment workflow")
+    try:
+        runs = json.loads(result.stdout)
+    except ValueError as error:
+        raise RuntimeError("gh returned malformed deployment workflow metadata") from error
+    for run in runs:
+        evidence_id = "github-actions:%s:%s" % (
+            run.get("databaseId"), run.get("headSha")
+        )
+        if (
+            run.get("conclusion") == "success"
+            and run.get("headSha") == deployed_commit
+            and isinstance(run.get("updatedAt"), str)
+        ):
+            return {
+                "verified": True,
+                "candidate_commit": candidate_commit,
+                "deployed_commit": deployed_commit,
+                "deployed_at": run["updatedAt"],
+                "deployment_evidence_id": evidence_id,
+                "deployment_url": run.get("url"),
+            }
+    return None
+
+
+def _environment_deployment_record(
+    repo_path, repository, environment, candidate_commit, deployed_commit, runner
+):
+    deployments_result = runner(
+        [
+            "gh", "api",
+            "repos/%s/deployments?sha=%s&environment=%s&per_page=20"
+            % (repository, deployed_commit, environment),
+        ],
+        cwd=repo_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if deployments_result.returncode != 0:
+        raise RuntimeError("unable to inspect production deployment records")
+    try:
+        deployments = json.loads(deployments_result.stdout)
+    except ValueError as error:
+        raise RuntimeError("gh returned malformed deployment records") from error
+    for deployment in deployments:
+        deployment_id = deployment.get("id")
+        if deployment.get("sha") != deployed_commit or not deployment_id:
+            continue
+        statuses_result = runner(
+            [
+                "gh", "api",
+                "repos/%s/deployments/%s/statuses?per_page=20"
+                % (repository, deployment_id),
+            ],
+            cwd=repo_path,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if statuses_result.returncode != 0:
+            raise RuntimeError("unable to inspect production deployment status")
+        try:
+            statuses = json.loads(statuses_result.stdout)
+        except ValueError as error:
+            raise RuntimeError("gh returned malformed deployment status") from error
+        evidence_id = "github-deployment:%s:%s:%s" % (
+            deployment_id, deployed_commit, environment
+        )
+        for status in statuses:
+            if status.get("state") == "success" and isinstance(
+                status.get("created_at"), str
+            ):
+                return {
+                    "verified": True,
+                    "candidate_commit": candidate_commit,
+                    "deployed_commit": deployed_commit,
+                    "deployed_at": status["created_at"],
+                    "deployment_evidence_id": evidence_id,
+                    "deployment_url": status.get("target_url") or status.get(
+                        "environment_url"
+                    ),
+                }
+    return None
+
+
+def production_deployment_record(
+    candidate, runner=subprocess.run, repositories=None, policies=None
+):
+    """Return trusted current-production evidence only when it contains the candidate."""
+    repositories = repositories or REPOSITORIES
+    policies = policies or DEPLOYMENT_POLICIES
+    repo_key = candidate.get("target_repo")
+    repo = repositories.get(repo_key)
+    policy = policies.get(repo_key)
+    if repo is None or policy is None or not os.path.isdir(repo.path):
+        return None
+    candidate_commit = candidate.get("commit")
+    if not isinstance(candidate_commit, str) or not candidate_commit:
+        return None
+    production_branch = policy.get("production_branch")
+    if not production_branch:
+        return None
+    _git(repo.path, "fetch", "--quiet", "origin", production_branch)
+    production_ref = "origin/%s" % production_branch
+    deployed = _git(repo.path, "rev-parse", production_ref, check=False)
+    if deployed.returncode != 0:
+        return None
+    deployed_commit = deployed.stdout.strip()
+    if _git(
+        repo.path, "merge-base", "--is-ancestor", candidate_commit, deployed_commit,
+        check=False,
+    ).returncode != 0:
+        return None
+    repository = _github_repository(repo.path, runner)
+    if policy.get("workflow"):
+        return _workflow_deployment_record(
+            repo.path, repository, policy["workflow"], candidate_commit,
+            deployed_commit, runner
+        )
+    if policy.get("environment"):
+        return _environment_deployment_record(
+            repo.path, repository, policy["environment"], candidate_commit,
+            deployed_commit, runner
+        )
+    return None
+
+
+def verify_production_deployment(
+    candidate, proof, runner=subprocess.run, repositories=None, policies=None
+):
+    """Bind an agent proof to independently discovered production evidence."""
+    record = production_deployment_record(
+        candidate, runner=runner, repositories=repositories, policies=policies
+    )
+    if record is None:
+        return False
+    return (
+        proof.get("candidate_commit") == record["candidate_commit"]
+        and proof.get("deployed_commit") == record["deployed_commit"]
+        and proof.get("deployed_at") == record["deployed_at"]
+        and record["deployment_evidence_id"] in proof.get(
+            "deployment_evidence_ids", []
+        )
+    )
 
 
 def remove_clean_worktree(worktree, require_pushed=True):

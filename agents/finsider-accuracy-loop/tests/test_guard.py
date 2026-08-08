@@ -113,6 +113,9 @@ class SafetyGuardTests(unittest.TestCase):
         self.assertIsNone(tool_blocked_reason(
             "proof", "mcp__finsider-verification__reconcile_deletions", {"apply": False}
         ))
+        self.assertIsNone(tool_blocked_reason(
+            "proof", "mcp__finsider-accuracy-tools__inspect_production_deployment", {}
+        ))
 
     def test_hook_process_denies_with_exit_two(self):
         payload = json.dumps({

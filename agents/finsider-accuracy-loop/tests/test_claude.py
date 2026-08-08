@@ -80,6 +80,9 @@ class ClaudeRunnerTests(unittest.TestCase):
         self.assertNotIn("Edit", allowed)
         self.assertNotIn("mcp__finsider-accuracy-tools__push_branch", allowed)
         self.assertIn("mcp__finsider-verification__trigger_verification_run", allowed)
+        self.assertIn(
+            "mcp__finsider-accuracy-tools__inspect_production_deployment", allowed
+        )
 
     def test_real_child_receives_prompt_without_api_key_and_writes_trace(self):
         with tempfile.TemporaryDirectory() as directory:

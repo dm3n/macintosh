@@ -31,6 +31,7 @@ from .workspace import (
     Worktree,
     create_worktree,
     remove_clean_worktree,
+    verify_production_deployment,
     verify_pull_request,
 )
 
@@ -369,6 +370,7 @@ class Supervisor:
         create_worktree_fn=create_worktree,
         remove_worktree_fn=remove_clean_worktree,
         verify_delivery_fn=verify_pull_request,
+        verify_production_fn=verify_production_deployment,
         sleep_fn=time.sleep,
     ):
         self.runtime_dir = os.path.abspath(runtime_dir)
@@ -382,6 +384,7 @@ class Supervisor:
         self.create_worktree_fn = create_worktree_fn
         self.remove_worktree_fn = remove_worktree_fn
         self.verify_delivery_fn = verify_delivery_fn
+        self.verify_production_fn = verify_production_fn
         self.sleep_fn = sleep_fn
         self.stop_event = Event()
         self._lock_file = None
@@ -483,37 +486,62 @@ class Supervisor:
             candidate.setdefault("queued_at", utc_now())
             normalized.append(candidate)
 
-        self.ensure_runtime()
-        state = load_state(self.state_path)
-        imported_ids = [candidate["contract_id"] for candidate in normalized]
-        if len(imported_ids) != len(set(imported_ids)):
-            raise ValueError("delivery candidate contract IDs must be unique")
-        historical_ids = state.setdefault("historical_completed_contract_ids", [])
-        for contract_id in imported_ids:
-            if (
-                contract_id in state.get("completed_contract_ids", [])
-                and contract_id not in historical_ids
-            ):
-                historical_ids.append(contract_id)
-        state["completed_contract_ids"] = [
-            contract_id for contract_id in state.get("completed_contract_ids", [])
-            if contract_id not in imported_ids
-        ]
-        state["delivery_candidates"] = [
-            candidate for candidate in state.get("delivery_candidates", [])
-            if candidate.get("contract_id") not in imported_ids
-        ] + normalized
-        self._reset_cycle(state)
-        state["status"] = "running"
-        state["clean_sweeps"] = []
-        state["last_sweep_errors"] = [
-            "unproved delivery backlog imported; fleet certification restarted"
-        ]
-        save_state(self.state_path, state)
-        self._append_ledger(
-            "supervisor", "BACKLOG-IMPORTED",
-            "%s candidates imported; production proof required" % len(normalized),
-        )
+        os.makedirs(self.trace_dir, exist_ok=True)
+        import_lock = open(os.path.join(self.trace_dir, ".supervisor.lock"), "a+")
+        try:
+            try:
+                fcntl.flock(import_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as error:
+                raise RuntimeError(
+                    "accuracy supervisor must be stopped before backlog import"
+                ) from error
+            self.ensure_runtime()
+            state = load_state(self.state_path)
+            imported_ids = [candidate["contract_id"] for candidate in normalized]
+            if len(imported_ids) != len(set(imported_ids)):
+                raise ValueError("delivery candidate contract IDs must be unique")
+            historical_ids = state.setdefault("historical_completed_contract_ids", [])
+            for contract_id in imported_ids:
+                if (
+                    contract_id in state.get("completed_contract_ids", [])
+                    and contract_id not in historical_ids
+                ):
+                    historical_ids.append(contract_id)
+            state["completed_contract_ids"] = [
+                contract_id for contract_id in state.get("completed_contract_ids", [])
+                if contract_id not in imported_ids
+            ]
+            active = [
+                candidate for candidate in normalized
+                if candidate["status"] != "quarantined"
+            ]
+            quarantined = [
+                candidate for candidate in normalized
+                if candidate["status"] == "quarantined"
+            ]
+            state["delivery_candidates"] = [
+                candidate for candidate in state.get("delivery_candidates", [])
+                if candidate.get("contract_id") not in imported_ids
+            ] + active
+            state["quarantined_deliveries"] = [
+                candidate for candidate in state.get("quarantined_deliveries", [])
+                if candidate.get("contract_id") not in imported_ids
+            ] + quarantined
+            self._reset_cycle(state)
+            state["status"] = "running"
+            state["clean_sweeps"] = []
+            state["last_sweep_errors"] = [
+                "unproved delivery backlog imported; fleet certification restarted"
+            ]
+            save_state(self.state_path, state)
+            self._append_ledger(
+                "supervisor", "BACKLOG-IMPORTED",
+                "%s candidates and %s quarantined deliveries imported; production proof required"
+                % (len(active), len(quarantined)),
+            )
+        finally:
+            fcntl.flock(import_lock, fcntl.LOCK_UN)
+            import_lock.close()
 
     def _append_ledger(self, phase, outcome, summary):
         safe_summary = " ".join(str(summary).splitlines()).strip()
@@ -539,6 +567,7 @@ class Supervisor:
                 "historical_completed_contract_ids"
             ),
             "delivery_candidates": state.get("delivery_candidates"),
+            "quarantined_deliveries": state.get("quarantined_deliveries"),
             "active_contract": state.get("active_contract"),
             "spec_result": state.get("spec_result"),
             "build_result": state.get("build_result"),
@@ -663,29 +692,26 @@ class Supervisor:
                 )
         elif work_kind == "mismatch_proof":
             candidate = self._candidate_by_id(state, dependency) if dependency else None
-            if candidates and candidate is None:
+            if candidate is None:
                 raise AgentFailure(
-                    "production proof must link the in-flight delivery candidate"
+                    "every mismatch proof must link an existing delivery candidate"
                 )
-            if dependency and candidate is None:
-                raise AgentFailure("production proof references an unknown delivery candidate")
-            if candidate:
-                if baseline_mismatches != candidate.get("baseline_mismatch_count"):
-                    raise AgentFailure("production proof changed the candidate mismatch baseline")
-                if work_unit.get("domain") != candidate.get("domain"):
-                    raise AgentFailure("production proof changed the candidate domain")
-                if set(work_unit.get("workspace_names", [])) != set(
-                    candidate.get("workspace_names", [])
-                ):
-                    raise AgentFailure("production proof changed the candidate workspace scope")
-                if not set(candidate.get("application_paths", [])).issubset(
-                    set(application_paths)
-                ):
-                    raise AgentFailure("production proof omitted a candidate application path")
-                if not set(candidate.get("baseline_evidence_ids", [])).issubset(
-                    set(evidence_ids)
-                ):
-                    raise AgentFailure("production proof omitted candidate baseline evidence")
+            if baseline_mismatches != candidate.get("baseline_mismatch_count"):
+                raise AgentFailure("production proof changed the candidate mismatch baseline")
+            if work_unit.get("domain") != candidate.get("domain"):
+                raise AgentFailure("production proof changed the candidate domain")
+            if set(work_unit.get("workspace_names", [])) != set(
+                candidate.get("workspace_names", [])
+            ):
+                raise AgentFailure("production proof changed the candidate workspace scope")
+            if not set(candidate.get("application_paths", [])).issubset(
+                set(application_paths)
+            ):
+                raise AgentFailure("production proof omitted a candidate application path")
+            if not set(candidate.get("baseline_evidence_ids", [])).issubset(
+                set(evidence_ids)
+            ):
+                raise AgentFailure("production proof omitted candidate baseline evidence")
         if state.get("status") == "certified" and work_kind != "full_sweep":
             raise AgentFailure(
                 "a certified loop may only run continuing full-fleet certification sweeps"
@@ -758,7 +784,7 @@ class Supervisor:
     def _pending_delivery_candidates(self, state):
         return [
             candidate for candidate in state.get("delivery_candidates", [])
-            if isinstance(candidate, dict) and candidate.get("status") != "quarantined"
+            if isinstance(candidate, dict)
         ]
 
     def _candidate_by_id(self, state, contract_id):
@@ -840,6 +866,11 @@ class Supervisor:
             contract_id for contract_id in state.get("completed_contract_ids", [])
             if contract_id != work_unit["id"]
         ]
+        state["status"] = "running"
+        state["clean_sweeps"] = []
+        state["last_sweep_errors"] = [
+            "delivery candidate queued; fleet proof sequence restarted"
+        ]
 
     def _parse_proof_time(self, value):
         if not isinstance(value, str) or not value:
@@ -915,7 +946,7 @@ class Supervisor:
         candidate = self._candidate_by_id(
             state, work_unit.get("depends_on_contract_id")
         )
-        if candidate and proof["candidate_commit"] != candidate.get("commit"):
+        if candidate is None or proof["candidate_commit"] != candidate.get("commit"):
             return False
         required_ids = before_ids | after_ids | deployment_ids
         receipt_ids = {
@@ -923,7 +954,11 @@ class Supervisor:
             if receipt.get("status") == "complete"
         }
         judge_ids = set(result.get("verified_evidence", []))
-        return required_ids.issubset(receipt_ids) and required_ids.issubset(judge_ids)
+        return (
+            required_ids.issubset(receipt_ids)
+            and required_ids.issubset(judge_ids)
+            and self.verify_production_fn(candidate, proof)
+        )
 
     def _judge_accepts(self, state, result):
         if not self._judge_base_passes(result, "ACCEPT") or not self._build_is_ready(state):
@@ -1107,6 +1142,11 @@ class Supervisor:
                 state["delivery_candidates"] = [
                     candidate for candidate in state.get("delivery_candidates", [])
                     if candidate.get("contract_id") != dependency
+                ]
+                state["status"] = "running"
+                state["clean_sweeps"] = []
+                state["last_sweep_errors"] = [
+                    "candidate deployment proved; fleet proof sequence restarted"
                 ]
             self._resolve_accepted_blockers(state, result)
             self._apply_coverage(state, result.get("coverage_updates"))
