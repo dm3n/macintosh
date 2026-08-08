@@ -12,7 +12,7 @@
 
 - No autonomous merge, deploy, force-push, or production financial-record mutation.
 - No open PR, ticket, explanation, skipped check, or tolerated residual counts as accuracy.
-- One new delivery candidate may be in flight at a time; the imported legacy backlog is the temporary exception. Closed unsafe PRs remain in separate quarantine history.
+- One non-quarantined delivery candidate may be in flight at a time.
 - Every current and future authoritative active workspace is in scope.
 - Certification requires two fresh independent full-fleet sweeps with zero mismatches, errors, unknowns, stale data, unresolved surfaces, blockers, or pending candidates. The daemon then continues dynamic-roster sweeps forever.
 
@@ -25,7 +25,7 @@
 - Test: `agents/finsider-accuracy-loop/tests/test_model.py`
 
 **Interfaces:**
-- Produces: `delivery_candidates: list`, `quarantined_deliveries: list`, `completed_operation_ids: list` defaults in every loaded state.
+- Produces: `delivery_candidates: list`, `completed_operation_ids: list` defaults in every loaded state.
 
 - [ ] Write tests proving new states and existing v2 states expose both lists.
 - [ ] Run the focused model tests and observe the missing-key failure.
@@ -123,7 +123,7 @@
 - [ ] Commit the implementation with no AI attribution.
 - [ ] Merge to canonical `main`, push, and rerun the full suite on the merged result.
 - [ ] Gracefully stop and reactivate `com.finsider.accuracy-loop` from canonical source.
-- [ ] While the daemon is stopped, close unsafe PR #1130, import the current open and merged-but-unproved backlog into `delivery_candidates`, and retain #1130 in `quarantined_deliveries`.
+- [ ] Import the current open and merged-but-unproved PR backlog into `delivery_candidates`, quarantining PR #1130.
 - [ ] Verify live state has zero retries, no stale active contract, a visible delivery queue, no pre-deployment PR counted as newly completed accuracy work, and no successful-certification exit path.
 
 ### Task 8: Brain continuity

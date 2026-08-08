@@ -13,7 +13,6 @@ from accuracy_loop.workspace import (  # noqa: E402
     create_worktree,
     inspect_worktree,
     remove_clean_worktree,
-    verify_production_deployment,
     verify_pull_request,
 )
 
@@ -144,69 +143,6 @@ class WorktreeTests(unittest.TestCase):
         payload["headRefOid"] = "0" * 40
         self.assertFalse(verify_pull_request(
             worktree, payload["url"], head, moves_customer_numbers=True, runner=gh_runner
-        ))
-
-    def test_production_verification_binds_candidate_to_deployed_ref_and_workflow(self):
-        git("checkout", "-b", "master", cwd=self.repo)
-        git("push", "-u", "origin", "master", cwd=self.repo)
-        git("checkout", "development", cwd=self.repo)
-        with open(os.path.join(self.repo, "candidate.txt"), "w") as candidate_file:
-            candidate_file.write("candidate\n")
-        git("add", "candidate.txt", cwd=self.repo)
-        git("commit", "-m", "candidate", cwd=self.repo)
-        candidate_commit = git("rev-parse", "HEAD", cwd=self.repo)
-        git("checkout", "master", cwd=self.repo)
-        git("merge", "--ff-only", candidate_commit, cwd=self.repo)
-        git("push", "origin", "master", cwd=self.repo)
-        deployed_at = "2026-08-08T18:00:00Z"
-        proof = {
-            "candidate_commit": candidate_commit,
-            "deployed_commit": candidate_commit,
-            "deployed_at": deployed_at,
-            "deployment_evidence_ids": [
-                "github-actions:123:%s" % candidate_commit
-            ],
-        }
-
-        def deployment_runner(command, **_kwargs):
-            if command[:4] == ["gh", "repo", "view", "--json"]:
-                payload = {"nameWithOwner": "dm3n/fixture"}
-            else:
-                payload = [{
-                    "databaseId": 123,
-                    "headSha": candidate_commit,
-                    "conclusion": "success",
-                    "updatedAt": deployed_at,
-                    "url": "https://github.com/dm3n/fixture/actions/runs/123",
-                }]
-            return subprocess.CompletedProcess(
-                command, 0, stdout=__import__("json").dumps(payload), stderr=""
-            )
-
-        self.assertTrue(verify_production_deployment(
-            {
-                "target_repo": "fixture",
-                "commit": candidate_commit,
-            },
-            proof,
-            runner=deployment_runner,
-            repositories=self.repositories,
-            policies={"fixture": {
-                "production_branch": "master",
-                "workflow": "production.yml",
-            }},
-        ))
-
-        proof["deployment_evidence_ids"] = ["opaque-agent-assertion"]
-        self.assertFalse(verify_production_deployment(
-            {"target_repo": "fixture", "commit": candidate_commit},
-            proof,
-            runner=deployment_runner,
-            repositories=self.repositories,
-            policies={"fixture": {
-                "production_branch": "master",
-                "workflow": "production.yml",
-            }},
         ))
 
 

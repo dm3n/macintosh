@@ -96,8 +96,6 @@ The recorded phase resumes after a restart. Do not hand-edit `STATE.json` while 
 
 Code work is isolated under the runtime worktree directory. The branch name starts with `agent/accuracy-` and the PR targets the configured repository base branch. The work unit's idempotency key is used to find an existing branch, PR, ticket, comment, or verification job after a crash.
 
-A passing code PR is queued as a delivery `CANDIDATE`; it is not completed accuracy. The queue blocks new code until a linked post-deployment proof independently reproduces a positive before count moving to exactly zero with no additional skips, denominator shrinkage, recycled evidence, or adjacent regressions. The supervisor also proves the candidate commit is contained in the current production ref and binds it to a successful trusted deployment receipt. Candidate creation and deployment proof invalidate older clean sweeps. Operations artifacts are recorded separately and never count as accuracy.
-
-Unsafe closed PRs remain visible in `quarantined_deliveries` but are not active candidates. Backlog import takes the same process lock as the daemon and refuses to run unless the service is stopped.
+A passing code PR is queued as a delivery `CANDIDATE`; it is not completed accuracy. The queue blocks new code until a linked post-deployment proof independently reproduces a positive before count moving to exactly zero with no additional skips, denominator shrinkage, recycled evidence, or adjacent regressions. Operations artifacts are recorded separately and never count as accuracy.
 
 The legacy state under `.accuracy-fix-loop` and the old tie-out state under `~/.claude/scripts/tieout-loop` are retained as historical input. They are not deleted and cannot satisfy the new completion gate.

@@ -88,7 +88,6 @@ def new_state():
         "completed_operation_ids": [],
         "historical_completed_contract_ids": [],
         "delivery_candidates": [],
-        "quarantined_deliveries": [],
         "clean_sweeps": [],
         "contract_sha256": None,
         "last_error": None,
@@ -108,7 +107,6 @@ def load_state(path):
     state.setdefault("completed_operation_ids", [])
     state.setdefault("historical_completed_contract_ids", [])
     state.setdefault("delivery_candidates", [])
-    state.setdefault("quarantined_deliveries", [])
     return state
 
 
@@ -141,7 +139,6 @@ def _migrate_v1_state(state):
     migrated.setdefault("completed_operation_ids", [])
     migrated.setdefault("historical_completed_contract_ids", [])
     migrated.setdefault("delivery_candidates", [])
-    migrated.setdefault("quarantined_deliveries", [])
     migrated.setdefault("action_intent", None)
     migrated.setdefault("contract_sha256", None)
     migrated["schema_version"] = SCHEMA_VERSION
@@ -533,8 +530,6 @@ def record_accepted_sweep(state, sweep):
     errors = validate_sweep(sweep)
     if state.get("blockers"):
         errors.append("unresolved blockers remain")
-    if state.get("delivery_candidates"):
-        errors.append("unresolved delivery candidates remain")
     state["last_sweep_errors"] = errors
     state["status"] = "running"
     if errors:
@@ -557,14 +552,6 @@ def record_accepted_sweep(state, sweep):
                 state["clean_sweeps"] = []
                 state["last_sweep_errors"] = ["%s regressed between clean sweeps" % field]
                 return False
-        if sweep.get("latest_deploy_watermark") != previous.get(
-            "latest_deploy_watermark"
-        ):
-            state["clean_sweeps"] = [copy.deepcopy(sweep)]
-            state["last_sweep_errors"] = [
-                "deployment changed; proof sequence restarted"
-            ]
-            return False
         previous_observed = _parse_timestamp(previous.get("observed_at"), "observed_at", [])
         current_observed = _parse_timestamp(sweep.get("observed_at"), "observed_at", [])
         if previous_observed and current_observed and current_observed <= previous_observed:

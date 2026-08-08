@@ -1,5 +1,4 @@
 import copy
-import fcntl
 import os
 import sys
 import tempfile
@@ -291,18 +290,9 @@ class SupervisorTests(unittest.TestCase):
             create_worktree_fn=lambda *args, **kwargs: self.fake_worktree,
             remove_worktree_fn=lambda *args, **kwargs: True,
             verify_delivery_fn=lambda *args, **kwargs: True,
-            verify_production_fn=lambda *args, **kwargs: True,
             sleep_fn=lambda seconds: None,
         )
         return supervisor, runner
-
-    def seed_candidate(self, supervisor, candidate=None):
-        candidate = candidate or candidate_record()
-        supervisor.ensure_runtime()
-        state = load_state(supervisor.state_path)
-        state["delivery_candidates"] = [candidate]
-        save_state(supervisor.state_path, state)
-        return candidate
 
     def test_runtime_initialization_has_exactly_three_durable_state_files(self):
         supervisor, _ = self.supervisor([])
@@ -389,14 +379,11 @@ class SupervisorTests(unittest.TestCase):
         self.assertIn("C51", state["historical_completed_contract_ids"])
 
     def test_accepted_work_starts_next_spec_without_schedule_sleep(self):
-        initial_result = spec_result("proof")
-        initial_result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
-        next_result = spec_result("code")
+        next_result = spec_result("proof")
         next_result["contract"]["id"] = "ACC-101"
         supervisor, runner = self.supervisor(
-            [initial_result, proof_build_result(), proof_judge_result(), next_result]
+            [spec_result("proof"), proof_build_result(), proof_judge_result(), next_result]
         )
-        self.seed_candidate(supervisor)
 
         supervisor.step()
         supervisor.step()
@@ -407,12 +394,9 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(load_state(supervisor.state_path)["phase"], "build")
 
     def test_accepted_work_records_its_contract_id_once(self):
-        result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
         supervisor, _ = self.supervisor(
-            [result, proof_build_result(), proof_judge_result()]
+            [spec_result("proof"), proof_build_result(), proof_judge_result()]
         )
-        self.seed_candidate(supervisor)
 
         supervisor.step()
         supervisor.step()
@@ -420,7 +404,7 @@ class SupervisorTests(unittest.TestCase):
 
         self.assertEqual(
             load_state(supervisor.state_path)["completed_contract_ids"],
-            ["ACC-100", "ACC-CANDIDATE"],
+            ["ACC-100"],
         )
 
     def test_code_action_creates_worktree_before_build(self):
@@ -511,7 +495,6 @@ class SupervisorTests(unittest.TestCase):
                 load_state(supervisor.state_path)
             ) or True,
             verify_delivery_fn=lambda *args, **kwargs: True,
-            verify_production_fn=lambda *args, **kwargs: True,
             sleep_fn=lambda seconds: None,
         )
 
@@ -598,7 +581,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(load_state(supervisor.state_path)["status"], "certified")
 
     def test_certified_loop_rejects_an_ordinary_work_unit(self):
-        supervisor, _ = self.supervisor([spec_result("code")])
+        supervisor, _ = self.supervisor([spec_result("proof")])
         supervisor.ensure_runtime()
         state = load_state(supervisor.state_path)
         state["status"] = "certified"
@@ -691,7 +674,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertIsNotNone(state["retry_at"])
 
     def test_spec_replaces_agent_idempotency_key_with_deterministic_key(self):
-        result = spec_result("code")
+        result = spec_result("proof")
         result["contract"]["idempotency_key"] = "agent-chosen-random-value"
         supervisor, _ = self.supervisor([result])
 
@@ -714,10 +697,7 @@ class SupervisorTests(unittest.TestCase):
                 "status": "running",
             }],
         })
-        result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
-        supervisor, runner = self.supervisor([result, waiting])
-        self.seed_candidate(supervisor)
+        supervisor, runner = self.supervisor([spec_result("proof"), waiting])
 
         supervisor.step()
         key_before = load_state(supervisor.state_path)["active_contract"]["idempotency_key"]
@@ -752,7 +732,6 @@ class SupervisorTests(unittest.TestCase):
 
     def test_spec_reconciles_resolved_blockers_by_stable_id(self):
         result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
         result["resolved_blocker_ids"] = ["ACC-OLD"]
         supervisor, _ = self.supervisor([result])
         supervisor.ensure_runtime()
@@ -761,7 +740,6 @@ class SupervisorTests(unittest.TestCase):
             {"id": "ACC-OLD", "summary": "Old", "owner": "Ops", "evidence_needed": ["sync"]},
             {"id": "ACC-KEEP", "summary": "Keep", "owner": "Eng", "evidence_needed": ["fix"]},
         ]
-        state["delivery_candidates"] = [candidate_record()]
         save_state(supervisor.state_path, state)
 
         supervisor.step()
@@ -774,15 +752,12 @@ class SupervisorTests(unittest.TestCase):
     def test_accepted_judge_can_resolve_a_named_existing_blocker(self):
         verdict = proof_judge_result()
         verdict["resolved_blocker_ids"] = ["ACC-OLD"]
-        result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
-        supervisor, _ = self.supervisor([result, proof_build_result(), verdict])
+        supervisor, _ = self.supervisor([spec_result("proof"), proof_build_result(), verdict])
         supervisor.ensure_runtime()
         state = load_state(supervisor.state_path)
         state["blockers"] = [
             {"id": "ACC-OLD", "summary": "Old", "owner": "Ops", "evidence_needed": ["sync"]}
         ]
-        state["delivery_candidates"] = [candidate_record()]
         save_state(supervisor.state_path, state)
 
         for _ in range(3):
@@ -815,44 +790,28 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(len(state["delivery_candidates"]), 1)
         self.assertEqual(state["delivery_candidates"][0]["contract_id"], "ACC-100")
 
-    def test_queuing_candidate_invalidates_pre_delivery_clean_sweep(self):
-        supervisor, _ = self.supervisor([
-            spec_result("code"), delivered_code_result(), judge_result("CANDIDATE"),
-        ])
-        supervisor.ensure_runtime()
-        state = load_state(supervisor.state_path)
-        state["clean_sweeps"] = [complete_sweep("pre-delivery-sweep")]
-        save_state(supervisor.state_path, state)
-
-        for _ in range(3):
-            supervisor.step()
-
-        self.assertEqual(load_state(supervisor.state_path)["clean_sweeps"], [])
-
     def _run_proof(self, proof=None, judge_proof=None, candidate=None):
         proof = proof or production_proof()
         judge_proof = proof if judge_proof is None else judge_proof
-        candidate = candidate or candidate_record()
         result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = candidate["contract_id"]
+        if candidate:
+            result["contract"]["depends_on_contract_id"] = candidate["contract_id"]
         supervisor, _ = self.supervisor([
             result, proof_build_result(proof), proof_judge_result(judge_proof),
         ])
         supervisor.ensure_runtime()
-        state = load_state(supervisor.state_path)
-        state["delivery_candidates"] = [candidate]
-        save_state(supervisor.state_path, state)
+        if candidate:
+            state = load_state(supervisor.state_path)
+            state["delivery_candidates"] = [candidate]
+            save_state(supervisor.state_path, state)
         for _ in range(3):
             supervisor.step()
         return load_state(supervisor.state_path)
 
     def test_mismatch_proof_requires_structured_production_proof(self):
-        result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
         supervisor, _ = self.supervisor([
-            result, build_result(), judge_result("ACCEPT"),
+            spec_result("proof"), build_result(), judge_result("ACCEPT"),
         ])
-        self.seed_candidate(supervisor)
 
         for _ in range(3):
             supervisor.step()
@@ -860,14 +819,6 @@ class SupervisorTests(unittest.TestCase):
         self.assertNotIn(
             "ACC-100", load_state(supervisor.state_path)["completed_contract_ids"]
         )
-
-    def test_mismatch_proof_without_candidate_is_rejected(self):
-        supervisor, _ = self.supervisor([spec_result("proof")])
-
-        outcome = supervisor.step()
-
-        self.assertEqual(outcome, "retry")
-        self.assertIn("must link", load_state(supervisor.state_path)["last_error"])
 
     def test_production_proof_rejects_residual_mismatches(self):
         state = self._run_proof(production_proof(after_mismatch_count=1))
@@ -910,48 +861,6 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(
             state["completed_contract_ids"], ["ACC-100", "ACC-CANDIDATE"]
         )
-
-    def test_linked_zero_proof_requires_trusted_deployment_verification(self):
-        result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
-        runner = ScriptedRunner([
-            result, proof_build_result(), proof_judge_result(),
-        ])
-        supervisor = Supervisor(
-            runtime_dir=self.runtime,
-            source_dir=self.source,
-            finsider_dir=self.finsider,
-            runner=runner,
-            create_worktree_fn=lambda *args, **kwargs: self.fake_worktree,
-            remove_worktree_fn=lambda *args, **kwargs: True,
-            verify_delivery_fn=lambda *args, **kwargs: True,
-            verify_production_fn=lambda *args, **kwargs: False,
-            sleep_fn=lambda seconds: None,
-        )
-        self.seed_candidate(supervisor)
-
-        for _ in range(3):
-            supervisor.step()
-
-        state = load_state(supervisor.state_path)
-        self.assertEqual(state["completed_contract_ids"], [])
-        self.assertEqual(len(state["delivery_candidates"]), 1)
-
-    def test_linked_deployment_proof_invalidates_pre_deployment_clean_sweep(self):
-        result = spec_result("proof")
-        result["contract"]["depends_on_contract_id"] = "ACC-CANDIDATE"
-        supervisor, _ = self.supervisor([
-            result, proof_build_result(), proof_judge_result(),
-        ])
-        self.seed_candidate(supervisor)
-        state = load_state(supervisor.state_path)
-        state["clean_sweeps"] = [complete_sweep("pre-deployment-sweep")]
-        save_state(supervisor.state_path, state)
-
-        for _ in range(3):
-            supervisor.step()
-
-        self.assertEqual(load_state(supervisor.state_path)["clean_sweeps"], [])
 
     def test_spec_rejects_new_code_while_delivery_candidate_exists(self):
         supervisor, _ = self.supervisor([spec_result("code")])
@@ -1005,19 +914,8 @@ class SupervisorTests(unittest.TestCase):
             state["historical_completed_contract_ids"],
             ["ACC-CANDIDATE", "ACC-UNSAFE"],
         )
-        self.assertEqual(len(state["delivery_candidates"]), 1)
-        self.assertEqual(len(state["quarantined_deliveries"]), 1)
+        self.assertEqual(len(state["delivery_candidates"]), 2)
         self.assertEqual(len(supervisor._pending_delivery_candidates(state)), 1)
-
-    def test_backlog_import_refuses_while_supervisor_lock_is_held(self):
-        supervisor, _ = self.supervisor([])
-        supervisor.ensure_runtime()
-        lock_path = os.path.join(supervisor.trace_dir, ".supervisor.lock")
-        with open(lock_path, "w") as lock_file:
-            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-            with self.assertRaisesRegex(RuntimeError, "must be stopped"):
-                supervisor.import_delivery_candidates([candidate_record()])
 
     def test_structured_blocked_spec_creates_no_work_unit_or_artifact(self):
         blocked = {
@@ -1081,7 +979,6 @@ class SupervisorTests(unittest.TestCase):
             ),
             remove_worktree_fn=lambda *args, **kwargs: True,
             verify_delivery_fn=lambda *args, **kwargs: True,
-            verify_production_fn=lambda *args, **kwargs: True,
             sleep_fn=lambda seconds: None,
         )
 

@@ -72,7 +72,6 @@ SAFE_READ_TOOLS = {
     "mcp__finsider-accuracy-tools__inspect_repo",
     "mcp__finsider-accuracy-tools__run_test",
     "mcp__finsider-accuracy-tools__compute_roster_snapshot",
-    "mcp__finsider-accuracy-tools__inspect_production_deployment",
 }
 SAFE_DELIVERY_TOOLS = SAFE_READ_TOOLS | {
     "mcp__finsider-accuracy-tools__commit_changes",

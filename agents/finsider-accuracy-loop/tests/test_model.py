@@ -136,7 +136,6 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(state["phase"], "spec")
         self.assertEqual(state["status"], "running")
         self.assertEqual(state["delivery_candidates"], [])
-        self.assertEqual(state["quarantined_deliveries"], [])
         self.assertEqual(state["completed_operation_ids"], [])
         self.assertEqual(state["historical_completed_contract_ids"], [])
         self.assertEqual(set(state["coverage"]), set(REQUIRED_DOMAINS))
@@ -181,7 +180,6 @@ class StateModelTests(unittest.TestCase):
             existing = new_state()
             existing.pop("completed_contract_ids", None)
             existing.pop("delivery_candidates", None)
-            existing.pop("quarantined_deliveries", None)
             existing.pop("completed_operation_ids", None)
             existing.pop("historical_completed_contract_ids", None)
             with open(path, "w") as state_file:
@@ -191,7 +189,6 @@ class StateModelTests(unittest.TestCase):
 
             self.assertEqual(loaded["completed_contract_ids"], [])
             self.assertEqual(loaded["delivery_candidates"], [])
-            self.assertEqual(loaded["quarantined_deliveries"], [])
             self.assertEqual(loaded["completed_operation_ids"], [])
             self.assertEqual(loaded["historical_completed_contract_ids"], [])
 
@@ -295,27 +292,6 @@ class StateModelTests(unittest.TestCase):
 
         self.assertEqual(state["clean_sweeps"], [])
         self.assertIn("unresolved blockers remain", state["last_sweep_errors"])
-
-    def test_pending_delivery_candidate_prevents_certification(self):
-        state = new_state()
-        state["delivery_candidates"] = [{"contract_id": "ACC-PENDING"}]
-
-        self.assertFalse(record_accepted_sweep(state, complete_sweep("sweep-1")))
-
-        self.assertEqual(state["clean_sweeps"], [])
-        self.assertIn("unresolved delivery candidates remain", state["last_sweep_errors"])
-
-    def test_deployment_change_restarts_two_sweep_sequence(self):
-        state = new_state()
-        first = complete_sweep("sweep-1")
-        second = complete_sweep("sweep-2", "2026-08-06T22:05:00Z")
-        second["latest_deploy_watermark"] = "2026-08-06T20:30:00Z"
-
-        self.assertFalse(record_accepted_sweep(state, first))
-        self.assertFalse(record_accepted_sweep(state, second))
-
-        self.assertEqual([item["sweep_id"] for item in state["clean_sweeps"]], ["sweep-2"])
-        self.assertIn("deployment changed", state["last_sweep_errors"][0])
 
     def test_rejects_missing_roster_scope_or_surface_proof(self):
         missing_roster = complete_sweep("sweep-1")

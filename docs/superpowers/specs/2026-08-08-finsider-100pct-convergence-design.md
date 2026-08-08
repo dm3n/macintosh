@@ -38,18 +38,16 @@ Operations and tickets are coordination, not accuracy progress. They never incre
 The supervisor, not agent prose, enforces:
 
 1. Code PRs enter a durable delivery queue and are not added to completed contract IDs.
-2. At most one new delivery candidate may wait for review or deployment. While it exists, new code contracts are rejected. The imported legacy backlog may temporarily exceed this limit, but must drain before new code. Unsafe closed PRs are kept separately as quarantined historical deliveries.
-3. Every mismatch proof must link to an active candidate and contain structured production proof: before and after counts, immutable evidence IDs, deployed commit, timestamps, skip counts, denominators, and adjacent-regression count.
+2. At most one non-quarantined delivery candidate may wait for review or deployment. While it exists, new code contracts are rejected. The loop may only prove that candidate, report an honest blocked cycle, or run a full sweep when eligible.
+3. A mismatch proof linked to a candidate must contain structured production proof: before and after counts, immutable evidence IDs, deployed commit, timestamps, skip counts, denominators, and adjacent-regression count.
 4. `after_mismatch_count` must equal zero, `after_skipped_count` cannot exceed before, `after_denominator` cannot shrink, adjacent regressions must be zero, and after evidence cannot reuse before evidence.
 5. A full sweep must satisfy the existing content-bound roster and two-independent-sweep contract.
 6. A deploy-blocked planner can return a structured blocked result without inventing a ticket, PR, proof run, or code task.
-7. The supervisor fetches the production Git ref, proves candidate ancestry, and verifies a typed successful GitHub Actions or GitHub Deployment receipt bound to the deployed commit and timestamp.
-8. Queuing or proving a deployment invalidates prior clean sweeps. A deployment-watermark change between sweeps restarts the sequence.
-9. Backlog import acquires the daemon lock and refuses to run while the supervisor is active.
+7. Quarantined candidates remain visible but can never be selected for deployment proof until explicitly replaced or cleared.
 
 ## Current recovery
 
-The existing pending PR backlog is imported into the delivery queue while the daemon is stopped. PR #1130 is closed and retained in the separate quarantine history as unsafe. Open CPA-review candidates and merged-but-unproved candidates are retained as pending work. The old completed-contract history moves to an explicitly historical list, while the new proof sequence starts empty. No pre-deployment acceptance can count as accuracy completion.
+The existing pending PR backlog is imported into the delivery queue. PR #1130 is quarantined as unsafe. Open CPA-review candidates and merged-but-unproved candidates are retained as pending work. The old completed-contract history moves to an explicitly historical list, while the new proof sequence starts empty. No pre-deployment acceptance can count as accuracy completion.
 
 The loop does not autonomously merge or deploy financial code. Institutional-grade accuracy requires review separation. It continuously monitors the delivery gate, resumes proof immediately after an authorized deployment, and keeps the exact production mismatch open until zero is independently reproduced.
 

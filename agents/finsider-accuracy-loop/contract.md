@@ -74,7 +74,7 @@ Existing verifier-category coverage is sufficient. Do not select coverage-only w
 
 A correct pre-deployment code PR receives `CANDIDATE`, not `ACCEPT`. It enters the durable delivery queue and does not enter `completed_contract_ids`. Only a linked, post-deployment `mismatch_proof` may close the candidate and its proof contract. Operations work receives `COORDINATED`; tickets and comments never count as completed accuracy.
 
-Only one new delivery candidate may be in flight. While the queue is non-empty, the planner may select a production proof linked by `depends_on_contract_id`, or return a structured `blocked` decision with a null contract and explicit blocker. It may not create another code contract, invent coordination work, or rerun an unchanged undeployed baseline. The imported pre-upgrade backlog is allowed to exceed one temporarily, but no new code enters until it is drained. Unsafe closed PRs live in `quarantined_deliveries` as historical safety records, never in the active delivery queue.
+Only one new non-quarantined delivery candidate may be in flight. While the queue is non-empty, the planner may select a production proof linked by `depends_on_contract_id`, or return a structured `blocked` decision with a null contract and explicit blocker. It may not create another code contract, invent coordination work, or rerun an unchanged undeployed baseline. The imported pre-upgrade backlog is allowed to exceed one temporarily, but no new code enters until it is drained.
 
 Every ordinary work unit records a positive `baseline_mismatch_count`, a `target_mismatch_count` of zero, immutable `baseline_evidence_ids`, and one or more affected `application_paths`. The only cycle allowed to start at zero is a `full_sweep` after all known mismatch measurements are zero.
 
@@ -91,9 +91,7 @@ Every accepted mismatch proof contains the same structured `production_proof` in
 - `candidate_commit`, `deployed_commit`, `deployed_at`, and a later `observed_at`
 - `adjacent_regressions: 0`
 
-Every mismatch proof must link to an existing queued candidate. Unlinked proof cannot complete accuracy. Completed build receipts and the judge's independently verified evidence must contain every evidence identity. `candidate_commit` must exactly match the candidate commit. The supervisor independently fetches the repository production ref, proves the candidate is an ancestor of `deployed_commit`, and verifies a successful trusted GitHub Actions or GitHub Deployment receipt whose commit and completion timestamp exactly match the proof. Agent-authored deployment prose or an opaque receipt can never satisfy this gate.
-
-Any candidate creation, successful candidate deployment proof, or change in the fleet sweep's deployment watermark clears prior clean sweeps. Both certification sweeps therefore prove the same currently deployed code. Backlog imports acquire the supervisor process lock and are allowed only while the daemon is stopped.
+Completed build receipts and the judge's independently verified evidence must contain every evidence identity. When linked to a queued candidate, `candidate_commit` must exactly match the candidate commit.
 
 Priority order is:
 

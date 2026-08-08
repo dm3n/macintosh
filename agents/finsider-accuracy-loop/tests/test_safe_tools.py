@@ -1,5 +1,4 @@
 import os
-import json
 import shutil
 import subprocess
 import sys
@@ -20,39 +19,11 @@ from accuracy_loop.safe_tools import (  # noqa: E402
     _validated_test_command,
     create_or_view_pr,
     compute_roster_snapshot,
-    inspect_production_deployment,
 )
 from accuracy_loop.model import _workspace_roster_checksum  # noqa: E402
 
 
 class SafeToolTests(unittest.TestCase):
-    @patch("accuracy_loop.safe_tools.production_deployment_record")
-    def test_production_deployment_inspection_returns_trusted_record(self, record):
-        record.return_value = {
-            "verified": True,
-            "candidate_commit": "a" * 40,
-            "deployed_commit": "b" * 40,
-            "evidence_id": "github-actions:123:" + ("b" * 40),
-        }
-
-        result = json.loads(inspect_production_deployment({
-            "repository": "Mitch-be",
-            "candidate_commit": "a" * 40,
-        }))
-
-        self.assertTrue(result["verified"])
-        record.assert_called_once_with({
-            "target_repo": "Mitch-be",
-            "commit": "a" * 40,
-        })
-
-    def test_production_deployment_inspection_rejects_short_sha(self):
-        with self.assertRaisesRegex(ValueError, "full lowercase Git SHA"):
-            inspect_production_deployment({
-                "repository": "Mitch-be",
-                "candidate_commit": "abc123",
-            })
-
     def test_test_runner_has_no_shell_and_only_allows_test_commands(self):
         self.assertEqual(
             _validated_test_command("fnm", ["exec", "--using=20", "npm", "test", "--", "cash.test.js"]),
