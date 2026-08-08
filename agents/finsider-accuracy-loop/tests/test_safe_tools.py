@@ -53,13 +53,6 @@ class SafeToolTests(unittest.TestCase):
                 "candidate_commit": "abc123",
             })
 
-    def test_unreleased_local_repo_is_not_delivery_allowlisted(self):
-        with self.assertRaisesRegex(ValueError, "not allowlisted"):
-            inspect_production_deployment({
-                "repository": "finsider-excel-agent",
-                "candidate_commit": "a" * 40,
-            })
-
     def test_test_runner_has_no_shell_and_only_allows_test_commands(self):
         self.assertEqual(
             _validated_test_command("fnm", ["exec", "--using=20", "npm", "test", "--", "cash.test.js"]),

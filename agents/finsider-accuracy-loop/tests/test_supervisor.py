@@ -445,18 +445,6 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(runner.phases, ["spec"])
         self.assertEqual(load_state(supervisor.state_path)["phase"], "spec")
 
-    def test_code_contract_rejects_repo_without_trusted_release_evidence(self):
-        invalid = spec_result("code")
-        invalid["contract"]["target_repo"] = "finsider-excel-agent"
-        supervisor, runner = self.supervisor([invalid])
-
-        outcome = supervisor.step()
-
-        state = load_state(supervisor.state_path)
-        self.assertEqual(outcome, "retry")
-        self.assertEqual(runner.phases, ["spec"])
-        self.assertIn("trusted production release", state["last_error"])
-
     def test_spec_rejects_a_completed_contract_id(self):
         supervisor, runner = self.supervisor([spec_result("proof")])
         supervisor.ensure_runtime()

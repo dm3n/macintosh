@@ -133,13 +133,9 @@ One code work unit targets one allowlisted repository:
 - `Mitch-be`, base `development`
 - `Mitch-fe`, base `development`
 - `AI-Agents-CFO`, base `main`
+- `finsider-excel-agent`, base `main`
 - `finsider-mcp`, base `main`
 - `finsider-agents`, base `main`
-
-The Excel surface remains required in every full-fleet accuracy sweep. The local
-`finsider-excel-agent` repository has no Git remote or machine-verifiable production-release
-receipt, so the loop must route Excel code defects as operations until that release path is
-connected. It must never queue an Excel code candidate that cannot produce trusted deployment proof.
 
 Read each repository's `AGENTS.md`, `DOMAIN.md`, architecture documents, and local test commands before acting. Backend tests run on Node 20. Never run a production build while the Finsider frontend dev server is active.
 

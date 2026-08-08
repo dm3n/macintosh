@@ -69,16 +69,12 @@ Work on the actual application until every ingested Railz value and every custom
 Two failures kept repeating because this file never said what to do when the queue is empty.
 
 **1. `target_repo` must be one of these EXACT strings, or the contract is rejected:**
-`Mitch-be`, `Mitch-fe`, `AI-Agents-CFO`, `finsider-mcp`, `finsider-agents`.
+`Mitch-be`, `Mitch-fe`, `AI-Agents-CFO`, `finsider-excel-agent`, `finsider-mcp`, `finsider-agents`.
 Anything else — a path, a repo that merely exists on disk, a guess — fails validation with
-"code contract target repository has no trusted production release policy". A `code` action REQUIRES one of these.
+"code contract target repository is not allowlisted". A `code` action REQUIRES one of these.
 `operations` and `proof` actions REQUIRE `target_repo: null`; setting it fails validation too.
-If the fix you want to contract lives outside those five repositories, it is not a `code`
+If the fix you want to contract lives outside those six repositories, it is not a `code`
 contract — route it as `operations` (a ticket naming the owner) instead.
-
-`finsider-excel-agent` remains inside the full-fleet accuracy scope, but it is not code-deliverable
-by this loop until its Vercel/AppSource release is connected to Git and exposes a trusted production
-receipt. Route an Excel code defect as `operations`; never create an unprovable Excel candidate.
 
 **2. If a queued candidate is blocked on a merge or deploy you do not control, do NOT retry
 looking for code work that does not exist.** Return `decision: "blocked"`, `contract: null`, a
