@@ -34,7 +34,12 @@ An open PR, named owner, explanation, unsupported provider, stale connection, or
 
 The work-unit contract must include a new, never-reused stable ID, the exact domain, named companies/workspaces, one root-cause hypothesis, specific assertions, and a reproducible verification plan. It must also include:
 
-- `work_kind`: `application_fix`, `data_fix`, `mismatch_proof`, or `full_sweep`, matched to the action.
+- `work_kind`: determined by the action, not chosen independently. The supervisor rejects any other pairing outright, so use exactly this table:
+  - `action: code` requires `work_kind: application_fix`
+  - `action: operations` requires `work_kind: data_fix`
+  - `action: proof` requires `work_kind: mismatch_proof` or `work_kind: full_sweep`
+
+  The top-level `decision` must also equal `contract.action`.
 - `baseline_mismatch_count`: a positive integer for ordinary work, or zero only for `full_sweep`.
 - `target_mismatch_count`: exactly zero.
 - `baseline_evidence_ids`: one or more immutable receipts proving the before count.
