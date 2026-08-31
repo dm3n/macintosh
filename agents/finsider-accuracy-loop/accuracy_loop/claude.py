@@ -31,6 +31,20 @@ VERIFICATION_BUILD_TOOLS = VERIFICATION_READ_TOOLS + (
     "mcp__finsider-verification__trigger_verification_run",
     "mcp__finsider-verification__reconcile_deletions",
 )
+# Mirrors guard.py's JIRA_READ_TOOLS. The guard is the enforcement layer;
+# this list only lets the calls reach it. Spec and judge need to READ Jira
+# because an operations contract's deliverable is a ticket or a comment, and
+# a judge that cannot fetch the deliverable auto-BLOCKs every such contract
+# (B45: 11 of 13 cycles on 2026-08-31). Write tools stay out of this tuple.
+JIRA_READ_TOOLS = (
+    "mcp__atlassian__getJiraIssue",
+    "mcp__atlassian__searchJiraIssuesUsingJql",
+    "mcp__atlassian__getTransitionsForJiraIssue",
+    "mcp__atlassian__getJiraIssueRemoteIssueLinks",
+    "mcp__atlassian__getVisibleJiraProjects",
+    "mcp__atlassian__lookupJiraAccountId",
+    "mcp__atlassian__getAccessibleAtlassianResources",
+)
 READ_BUILTINS = ("Read", "Glob", "Grep", "WebFetch", "WebSearch", "StructuredOutput")
 BUILD_BUILTINS = READ_BUILTINS + ("Edit", "Write", "NotebookEdit")
 READ_ONLY_PHASE_TOOLS = ("Edit", "Write", "NotebookEdit", "Agent") + PRODUCTION_MUTATION_TOOLS
@@ -89,7 +103,7 @@ def build_command(schema, phase, claude_bin=CLAUDE_BIN):
         builtins = READ_BUILTINS
     else:
         disallowed = READ_ONLY_PHASE_TOOLS
-        allowed = READ_BUILTINS + VERIFICATION_READ_TOOLS + SAFE_READ_TOOLS
+        allowed = READ_BUILTINS + VERIFICATION_READ_TOOLS + SAFE_READ_TOOLS + JIRA_READ_TOOLS
         builtins = READ_BUILTINS
     mcp_config = {
         "mcpServers": {
