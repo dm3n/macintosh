@@ -310,6 +310,42 @@ JUDGE_SCHEMA = {
 }
 
 
+AUTH_FAILURE_MARKERS = (
+    "OAuth session expired",
+    "Failed to authenticate",
+)
+AUTH_NOTICE_INTERVAL = timedelta(hours=1)
+
+
+def _is_auth_failure(message):
+    return any(marker in message for marker in AUTH_FAILURE_MARKERS)
+
+
+def _notify_auth_expired():
+    """Surface an expired sign-in on screen.
+
+    An expired login fails every phase in well under a second, so the loop
+    retries it forever and still reports `status: running`. One streak burned
+    92 attempts across roughly eight hours before a human happened to read the
+    raw ledger. Nothing here can refresh the token, so the only useful action
+    is to ask for one.
+    """
+    try:
+        subprocess.run(
+            [
+                "/usr/bin/osascript",
+                "-e",
+                'display notification "Run: claude /login — the accuracy loop '
+                'is retrying and cannot proceed." with title "Finsider accuracy '
+                'loop: sign-in expired"',
+            ],
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def _retry_timestamp(attempts):
     delay = min(300, 30 * (2 ** min(attempts - 1, 4)))
     return (
@@ -814,9 +850,25 @@ class Supervisor:
             state["phase_attempts"] = state.get("phase_attempts", 0) + 1
             state["last_error"] = str(error)
             state["retry_at"] = _retry_timestamp(state["phase_attempts"])
+            outcome = "RETRY"
+            if _is_auth_failure(str(error)):
+                outcome = "AUTH"
+                if self._should_notify_auth(state):
+                    _notify_auth_expired()
+                    state["auth_notified_at"] = utc_now()
             save_state(self.state_path, state)
-            self._append_ledger(phase, "RETRY", str(error))
+            self._append_ledger(phase, outcome, str(error))
             return "retry"
+
+    def _should_notify_auth(self, state):
+        last = state.get("auth_notified_at")
+        if not isinstance(last, str) or not last:
+            return True
+        try:
+            sent = datetime.fromisoformat(last.replace("Z", "+00:00"))
+        except ValueError:
+            return True
+        return datetime.now(timezone.utc) - sent >= AUTH_NOTICE_INTERVAL
 
     def request_stop(self, *_args):
         self.stop_event.set()
