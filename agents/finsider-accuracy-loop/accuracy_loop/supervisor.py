@@ -453,6 +453,33 @@ class Supervisor:
         with open(os.path.join(self.source_dir, "prompts", filename)) as prompt_file:
             return prompt_file.read()
 
+    # The blocker list grows without bound (161 entries by 2026-09-02) and is
+    # serialized whole into every phase prompt. Past a point the rendered
+    # prompt exceeds the model's context and every phase fails with "Prompt is
+    # too long" — deterministically, so the retry loop can never recover. The
+    # prompt carries the newest entries in full plus a one-line digest of the
+    # rest; the full list stays intact in STATE.json.
+    PROMPT_BLOCKER_LIMIT = 40
+
+    def _blockers_for_prompt(self, state):
+        blockers = state.get("blockers") or []
+        if len(blockers) <= self.PROMPT_BLOCKER_LIMIT:
+            return blockers
+        recent = blockers[-self.PROMPT_BLOCKER_LIMIT:]
+        omitted = blockers[: len(blockers) - self.PROMPT_BLOCKER_LIMIT]
+        digest = {
+            "id": "__omitted_blocker_digest__",
+            "summary": "%d older blockers omitted from this prompt to fit the "
+            "context window; ids: %s. The full entries remain in STATE.json — "
+            "resolve them by id with evidence as usual." % (
+                len(omitted),
+                ", ".join(str(b.get("id")) for b in omitted),
+            ),
+            "owner": "state-file",
+            "evidence_needed": [],
+        }
+        return [digest] + recent
+
     def _render_prompt(self, phase, state):
         with open(self.contract_path) as contract_file:
             global_contract = contract_file.read()
@@ -460,7 +487,7 @@ class Supervisor:
             "cycle": state.get("cycle"),
             "phase": phase,
             "coverage": state.get("coverage"),
-            "blockers": state.get("blockers"),
+            "blockers": self._blockers_for_prompt(state),
             "completed_contract_ids": state.get("completed_contract_ids"),
             "active_contract": state.get("active_contract"),
             "spec_result": state.get("spec_result"),
