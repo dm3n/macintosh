@@ -596,6 +596,31 @@ class SupervisorTests(unittest.TestCase):
             ["ACC-KEEP"],
         )
 
+    def test_blocker_dedupe_ignores_agent_cycle_suffix(self):
+        result = spec_result("proof")
+        result["blockers"] = [
+            {"id": "B33-decision-C267", "summary": "New", "owner": "Daniel",
+             "evidence_needed": ["YES/NO"]},
+        ]
+        result["resolved_blocker_ids"] = ["ACC-OLD-C266"]
+        supervisor, _ = self.supervisor([result])
+        supervisor.ensure_runtime()
+        state = load_state(supervisor.state_path)
+        state["blockers"] = [
+            {"id": "ACC-OLD-C42", "summary": "Old", "owner": "Ops", "evidence_needed": ["sync"]},
+            {"id": "B33-decision-C193", "summary": "Stale copy", "owner": "Daniel",
+             "evidence_needed": ["YES/NO"]},
+            {"id": "B33-decision-C244", "summary": "Staler copy", "owner": "Daniel",
+             "evidence_needed": ["YES/NO"]},
+        ]
+        save_state(supervisor.state_path, state)
+
+        supervisor.step()
+
+        blockers = load_state(supervisor.state_path)["blockers"]
+        self.assertEqual([item["id"] for item in blockers], ["B33-decision-C267"])
+        self.assertEqual(blockers[0]["summary"], "New")
+
     def test_accepted_judge_can_resolve_a_named_existing_blocker(self):
         verdict = judge_result("ACCEPT")
         verdict["resolved_blocker_ids"] = ["ACC-OLD"]

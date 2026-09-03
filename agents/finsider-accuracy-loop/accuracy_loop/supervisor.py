@@ -321,6 +321,18 @@ def _is_auth_failure(message):
     return any(marker in message for marker in AUTH_FAILURE_MARKERS)
 
 
+# Agents stamp the current cycle onto blocker ids ("B33-SCRUM796-decision-C267"),
+# so exact-id dedupe never fires and the same ~15 blockers are re-appended every
+# cycle — 1,276 entries by 2026-09-03 were 188 distinct blockers. Dedupe on the
+# id with that suffix stripped; a bare contract id like "C147" has no leading
+# separator and passes through unchanged.
+_BLOCKER_CYCLE_SUFFIX = re.compile(r"[-_][Cc]\d+$")
+
+
+def _blocker_key(blocker_id):
+    return _BLOCKER_CYCLE_SUFFIX.sub("", str(blocker_id or ""))
+
+
 def _notify_auth_expired():
     """Surface an expired sign-in on screen.
 
@@ -608,22 +620,22 @@ class Supervisor:
         return "finsider-accuracy:%s:%s" % (work_unit["id"], digest)
 
     def _reconcile_blockers(self, state, result):
-        resolved = set(result.get("resolved_blocker_ids", []))
+        resolved = {_blocker_key(i) for i in result.get("resolved_blocker_ids", [])}
         by_id = {
-            blocker.get("id"): blocker
+            _blocker_key(blocker.get("id")): blocker
             for blocker in state.get("blockers", [])
-            if isinstance(blocker, dict) and blocker.get("id") not in resolved
+            if isinstance(blocker, dict) and _blocker_key(blocker.get("id")) not in resolved
         }
         for blocker in result.get("blockers", []):
             if blocker.get("id"):
-                by_id[blocker["id"]] = copy.deepcopy(blocker)
+                by_id[_blocker_key(blocker["id"])] = copy.deepcopy(blocker)
         state["blockers"] = list(by_id.values())
 
     def _resolve_accepted_blockers(self, state, result):
-        resolved = set(result.get("resolved_blocker_ids", []))
+        resolved = {_blocker_key(i) for i in result.get("resolved_blocker_ids", [])}
         state["blockers"] = [
             blocker for blocker in state.get("blockers", [])
-            if blocker.get("id") not in resolved
+            if _blocker_key(blocker.get("id")) not in resolved
         ]
 
     def _full_sweep_is_corroborated(self, state, judge_sweep, result):
@@ -737,7 +749,7 @@ class Supervisor:
         }
         state["blockers"] = [
             existing for existing in state.get("blockers", [])
-            if existing.get("id") != blocker["id"]
+            if _blocker_key(existing.get("id")) != _blocker_key(blocker["id"])
         ] + [blocker]
 
     def _cleanup_delivered_worktree(self, worktree, build):
