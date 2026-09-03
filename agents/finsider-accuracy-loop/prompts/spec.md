@@ -47,7 +47,7 @@ The work-unit contract must include a new, never-reused stable ID, the exact dom
 
 Supply an `idempotency_key`, but understand the supervisor deterministically replaces it from the accepted contract before any action. A code action must name one allowlisted `target_repo`. Operations and proof actions use `null`. There is no verifier work kind and a coverage-only contract is invalid.
 
-Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Return every blocker ID whose required evidence is now directly proved in `resolved_blocker_ids`. Never mark a blocker resolved because a ticket or PR merely exists.
+Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Stable means literal: when the supervisor's blocker list already carries a blocker for the same gate, reuse its exact id character-for-character — never append a cycle number, reorder its words, or mint a paraphrased variant. A new id is only for a genuinely new blocker. Return every blocker ID whose required evidence is now directly proved in `resolved_blocker_ids`. Never mark a blocker resolved because a ticket or PR merely exists.
 
 Do not prescribe tolerance widening to make a check pass. Do not duplicate a branch, PR, Jira issue, comment, or verification job already carrying the idempotency key.
 
