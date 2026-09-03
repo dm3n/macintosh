@@ -26,7 +26,7 @@ If the contract is wrong, do not improvise a different feature. Return `blocked`
 
 ## Operations action
 
-Perform one idempotent, non-destructive coordination action. Open or update the existing Jira item using the Finsider Plain English block. Name the responsible owner and exact evidence needed. Do not treat the routed action as accuracy and do not post duplicate comments.
+Perform one idempotent, non-destructive coordination action. Open or update the existing Jira item using the Finsider Plain English block. Name the responsible owner and exact evidence needed. Do not treat the routed action as accuracy and do not post duplicate comments. A duplicate is judged by CONTENT, not by idempotency key: before posting an escalation or reminder, read the ticket's recent comments, and if one already asks the same owner for the same decision within the last 24 hours, do not post another — cycles C299/C300/C302 posted three near-identical escalations to SCRUM-796 in 45 minutes because each cycle minted a fresh key. One escalation per gate per day, maximum.
 
 ## Proof action
 
