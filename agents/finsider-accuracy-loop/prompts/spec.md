@@ -34,7 +34,12 @@ An open PR, named owner, explanation, unsupported provider, stale connection, or
 
 The work-unit contract must include a new, never-reused stable ID, the exact domain, named companies/workspaces, one root-cause hypothesis, specific assertions, and a reproducible verification plan. It must also include:
 
-- `work_kind`: `application_fix`, `data_fix`, `mismatch_proof`, or `full_sweep`, matched to the action.
+- `work_kind`: determined by the action, not chosen independently. The supervisor rejects any other pairing outright, so use exactly this table:
+  - `action: code` requires `work_kind: application_fix`
+  - `action: operations` requires `work_kind: data_fix`
+  - `action: proof` requires `work_kind: mismatch_proof` or `work_kind: full_sweep`
+
+  The top-level `decision` must also equal `contract.action`.
 - `baseline_mismatch_count`: a positive integer for ordinary work, or zero only for `full_sweep`.
 - `target_mismatch_count`: exactly zero.
 - `baseline_evidence_ids`: one or more immutable receipts proving the before count.
@@ -42,7 +47,7 @@ The work-unit contract must include a new, never-reused stable ID, the exact dom
 
 Supply an `idempotency_key`, but understand the supervisor deterministically replaces it from the accepted contract before any action. A code action must name one allowlisted `target_repo`. Operations and proof actions use `null`. There is no verifier work kind and a coverage-only contract is invalid.
 
-Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Return every blocker ID whose required evidence is now directly proved in `resolved_blocker_ids`. Never mark a blocker resolved because a ticket or PR merely exists.
+Every blocker uses a stable `{id, summary, owner, evidence_needed}` object. Stable means literal: when the supervisor's blocker list already carries a blocker for the same gate, reuse its exact id character-for-character — never append a cycle number, reorder its words, or mint a paraphrased variant. A new id is only for a genuinely new blocker. Return every blocker ID whose required evidence is now directly proved in `resolved_blocker_ids`. Never mark a blocker resolved because a ticket or PR merely exists.
 
 Do not prescribe tolerance widening to make a check pass. Do not duplicate a branch, PR, Jira issue, comment, or verification job already carrying the idempotency key.
 

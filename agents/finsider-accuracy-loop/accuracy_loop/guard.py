@@ -73,6 +73,21 @@ SAFE_READ_TOOLS = {
     "mcp__finsider-accuracy-tools__run_test",
     "mcp__finsider-accuracy-tools__compute_roster_snapshot",
 }
+# Read-only Jira access for spec and judge. An operations contract's whole
+# deliverable is a ticket or a comment, and the judge could not fetch either —
+# every getJiraIssue was refused, so every operations contract auto-BLOCKED at
+# judgment no matter what build did (11 of 13 cycles on 2026-08-31 ended that
+# way). Reads only: creating, editing, commenting, and transitioning stay
+# blocked in these phases, so the judge can look at Jira but never touch it.
+JIRA_READ_TOOLS = {
+    "mcp__atlassian__getJiraIssue",
+    "mcp__atlassian__searchJiraIssuesUsingJql",
+    "mcp__atlassian__getTransitionsForJiraIssue",
+    "mcp__atlassian__getJiraIssueRemoteIssueLinks",
+    "mcp__atlassian__getVisibleJiraProjects",
+    "mcp__atlassian__lookupJiraAccountId",
+    "mcp__atlassian__getAccessibleAtlassianResources",
+}
 SAFE_DELIVERY_TOOLS = SAFE_READ_TOOLS | {
     "mcp__finsider-accuracy-tools__commit_changes",
     "mcp__finsider-accuracy-tools__push_branch",
@@ -127,6 +142,8 @@ def tool_blocked_reason(phase, tool_name, tool_input):
         if tool_name in SAFE_READ_TOOLS:
             return None
         if tool_name in VERIFICATION_READ_TOOLS:
+            return None
+        if tool_name in JIRA_READ_TOOLS:
             return None
         return "%s phase permits only read-only verification MCP tools" % phase
     if phase == "proof":

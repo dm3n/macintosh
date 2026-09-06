@@ -310,6 +310,54 @@ JUDGE_SCHEMA = {
 }
 
 
+AUTH_FAILURE_MARKERS = (
+    "OAuth session expired",
+    "Failed to authenticate",
+)
+AUTH_NOTICE_INTERVAL = timedelta(hours=1)
+
+
+def _is_auth_failure(message):
+    return any(marker in message for marker in AUTH_FAILURE_MARKERS)
+
+
+# Agents stamp the current cycle onto blocker ids ("B33-SCRUM796-decision-C267"),
+# so exact-id dedupe never fires and the same ~15 blockers are re-appended every
+# cycle — 1,276 entries by 2026-09-03 were 188 distinct blockers. Dedupe on the
+# id with that suffix stripped; a bare contract id like "C147" has no leading
+# separator and passes through unchanged.
+_BLOCKER_CYCLE_SUFFIX = re.compile(r"[-_][Cc]\d+$")
+
+
+def _blocker_key(blocker_id):
+    return _BLOCKER_CYCLE_SUFFIX.sub("", str(blocker_id or ""))
+
+
+def _notify_auth_expired():
+    """Surface an expired sign-in on screen.
+
+    An expired login fails every phase in well under a second, so the loop
+    retries it forever and still reports `status: running`. One streak burned
+    92 attempts across roughly eight hours before a human happened to read the
+    raw ledger. Nothing here can refresh the token, so the only useful action
+    is to ask for one.
+    """
+    try:
+        subprocess.run(
+            [
+                "/usr/bin/osascript",
+                "-e",
+                'display notification "Run: claude /login — the accuracy loop '
+                'is retrying and cannot proceed." with title "Finsider accuracy '
+                'loop: sign-in expired"',
+            ],
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def _retry_timestamp(attempts):
     delay = min(300, 30 * (2 ** min(attempts - 1, 4)))
     return (
@@ -417,6 +465,33 @@ class Supervisor:
         with open(os.path.join(self.source_dir, "prompts", filename)) as prompt_file:
             return prompt_file.read()
 
+    # The blocker list grows without bound (161 entries by 2026-09-02) and is
+    # serialized whole into every phase prompt. Past a point the rendered
+    # prompt exceeds the model's context and every phase fails with "Prompt is
+    # too long" — deterministically, so the retry loop can never recover. The
+    # prompt carries the newest entries in full plus a one-line digest of the
+    # rest; the full list stays intact in STATE.json.
+    PROMPT_BLOCKER_LIMIT = 40
+
+    def _blockers_for_prompt(self, state):
+        blockers = state.get("blockers") or []
+        if len(blockers) <= self.PROMPT_BLOCKER_LIMIT:
+            return blockers
+        recent = blockers[-self.PROMPT_BLOCKER_LIMIT:]
+        omitted = blockers[: len(blockers) - self.PROMPT_BLOCKER_LIMIT]
+        digest = {
+            "id": "__omitted_blocker_digest__",
+            "summary": "%d older blockers omitted from this prompt to fit the "
+            "context window; ids: %s. The full entries remain in STATE.json — "
+            "resolve them by id with evidence as usual." % (
+                len(omitted),
+                ", ".join(str(b.get("id")) for b in omitted),
+            ),
+            "owner": "state-file",
+            "evidence_needed": [],
+        }
+        return [digest] + recent
+
     def _render_prompt(self, phase, state):
         with open(self.contract_path) as contract_file:
             global_contract = contract_file.read()
@@ -424,7 +499,7 @@ class Supervisor:
             "cycle": state.get("cycle"),
             "phase": phase,
             "coverage": state.get("coverage"),
-            "blockers": state.get("blockers"),
+            "blockers": self._blockers_for_prompt(state),
             "completed_contract_ids": state.get("completed_contract_ids"),
             "active_contract": state.get("active_contract"),
             "spec_result": state.get("spec_result"),
@@ -545,22 +620,22 @@ class Supervisor:
         return "finsider-accuracy:%s:%s" % (work_unit["id"], digest)
 
     def _reconcile_blockers(self, state, result):
-        resolved = set(result.get("resolved_blocker_ids", []))
+        resolved = {_blocker_key(i) for i in result.get("resolved_blocker_ids", [])}
         by_id = {
-            blocker.get("id"): blocker
+            _blocker_key(blocker.get("id")): blocker
             for blocker in state.get("blockers", [])
-            if isinstance(blocker, dict) and blocker.get("id") not in resolved
+            if isinstance(blocker, dict) and _blocker_key(blocker.get("id")) not in resolved
         }
         for blocker in result.get("blockers", []):
             if blocker.get("id"):
-                by_id[blocker["id"]] = copy.deepcopy(blocker)
+                by_id[_blocker_key(blocker["id"])] = copy.deepcopy(blocker)
         state["blockers"] = list(by_id.values())
 
     def _resolve_accepted_blockers(self, state, result):
-        resolved = set(result.get("resolved_blocker_ids", []))
+        resolved = {_blocker_key(i) for i in result.get("resolved_blocker_ids", [])}
         state["blockers"] = [
             blocker for blocker in state.get("blockers", [])
-            if blocker.get("id") not in resolved
+            if _blocker_key(blocker.get("id")) not in resolved
         ]
 
     def _full_sweep_is_corroborated(self, state, judge_sweep, result):
@@ -674,7 +749,7 @@ class Supervisor:
         }
         state["blockers"] = [
             existing for existing in state.get("blockers", [])
-            if existing.get("id") != blocker["id"]
+            if _blocker_key(existing.get("id")) != _blocker_key(blocker["id"])
         ] + [blocker]
 
     def _cleanup_delivered_worktree(self, worktree, build):
@@ -814,9 +889,25 @@ class Supervisor:
             state["phase_attempts"] = state.get("phase_attempts", 0) + 1
             state["last_error"] = str(error)
             state["retry_at"] = _retry_timestamp(state["phase_attempts"])
+            outcome = "RETRY"
+            if _is_auth_failure(str(error)):
+                outcome = "AUTH"
+                if self._should_notify_auth(state):
+                    _notify_auth_expired()
+                    state["auth_notified_at"] = utc_now()
             save_state(self.state_path, state)
-            self._append_ledger(phase, "RETRY", str(error))
+            self._append_ledger(phase, outcome, str(error))
             return "retry"
+
+    def _should_notify_auth(self, state):
+        last = state.get("auth_notified_at")
+        if not isinstance(last, str) or not last:
+            return True
+        try:
+            sent = datetime.fromisoformat(last.replace("Z", "+00:00"))
+        except ValueError:
+            return True
+        return datetime.now(timezone.utc) - sent >= AUTH_NOTICE_INTERVAL
 
     def request_stop(self, *_args):
         self.stop_event.set()
